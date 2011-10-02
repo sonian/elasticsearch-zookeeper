@@ -1,0 +1,10 @@
+.DS_Store
+.gradle/
+elasticsearch-zookeeper.iml
+elasticsearch-zookeeper.iws
+elasticsearch-zookeeper.ipr
+build/
+data/
+logs/
+out/
+work/
