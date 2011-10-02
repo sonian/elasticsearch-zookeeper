@@ -1,7 +1,5 @@
 h1. ZooKeeper Plugin
 
-This is an initial implementation of a ZooKeeper-based discovery plugin.
-
 h2. Usage
 
 * Download ZooKeeper 3.3.3 from http://zookeeper.apache.org/releases.html
@@ -31,22 +29,22 @@ The ZooKeeper discovery process can be divided in 3 logical steps.
 
 h3. Initialization and Registration
 
-Upon ES node start, the ZooKeeper discovery plugin connects to ZooKeeper and creates the following persistent node if it doesn’t already exist:
+Upon ES node start, the ZooKeeper discovery plugin connects to ZooKeeper and creates the following persistent node if it doesn't already exist:
 
-/es/clusters/_cluster name_/nodes
+/es/clusters/*_cluster name_*/nodes
 
-Then ES node creates an ephemeral ZK node /es/clusters/_cluster name_/nodes/_node-id_ with serialized content of local DiscoveryNode.
+Then ES node creates an ephemeral ZK node /es/clusters/*_cluster name_*/nodes/*_node-id_* with serialized content of local DiscoveryNode.
 
 h3. Master discovery
 
-After registration ES node first tries to read ZK node /es/clusters/_cluster name_/leader and starts watching this node. Existence of this node indicates that cluster already has a master elected. In which case ES node stops the master discovery process and awaits for the cluster state to be sent to it by the master.
+After registration ES node first tries to read ZK node /es/clusters/*_cluster name_*/leader and starts watching this node. Existence of this node indicates that cluster already has a master elected. In which case ES node stops the master discovery process and awaits for the cluster state to be sent to it by the master.
 
-If ZK node /es/clusters/_cluster name_/leader doesn't exist and ES node is eligible to be elected as master, ES node tries to create ephemeral ZK node /es/clusters/_cluster name_/leader. This is an atomic operation and if multiple ES nodes try to create the leader node at the same time only one of them succeeds. If ZK node creation was successful, ES node that created the leader node assumes the role of the cluster master. If leader node creation failed, ES node goes back to trying to read ZK node /es/clusters/_cluster name_/leader.
+If ZK node /es/clusters/*_cluster name_*/leader doesn't exist and ES node is eligible to be elected as master, ES node tries to create ephemeral ZK node /es/clusters/*_cluster name_*/leader. This is an atomic operation and if multiple ES nodes try to create the leader node at the same time only one of them succeeds. If ZK node creation was successful, ES node that created the leader node assumes the role of the cluster master. If leader node creation failed, ES node goes back to trying to read ZK node /es/clusters/*_cluster name_*/leader.
 
-If ZK node /es/clusters/_cluster name_/leader doesn't exist and ES is not eligible to be elected as a master, it sets NO_MASTER_BLOCK and waits for node creation watcher to be triggered. As soon as the ZK node is created, ES node restarts the master discovery process.
+If ZK node /es/clusters/*_cluster name_*/leader doesn't exist and ES is not eligible to be elected as a master, it sets NO_MASTER_BLOCK and waits for node creation watcher to be triggered. As soon as the ZK node is created, ES node restarts the master discovery process.
 
-The watcher that is set during read operation on the leader ZK node is also triggered when node disappears. Leader node disappearance is causing the restarts the master discovery process. Because the /es/clusters/_cluster name_/leader node is ephemeral, it disappears as soon as the ES master node that created it disconnects from the system or stops responding to pings. It ensures that cluster master is always available
+The watcher that is set during read operation on the leader ZK node is also triggered when node disappears. Leader node disappearance is causing the restarts the master discovery process. Because the /es/clusters/*_cluster name_*/leader node is ephemeral, it disappears as soon as the ES master node that created it disconnects from the system or stops responding to pings. It ensures that cluster master is always available
 
 h3. Node List Update
 
-If ES node is elected as a master, it reads list of children of the /es/clusters/_cluster name_/nodes node and starts watching for any changes in the list. Then ES updates the list of nodes in the cluster state to match the list of nodes in ZK. When the watcher on the /es/clusters/_cluster name_/nodes node is triggered the Node List Update operation is repeated. In other words ephemeral nodes in /es/clusters/_cluster name_/nodes perform the role of node fault detections.
+If ES node is elected as a master, it reads list of children of the /es/clusters/*_cluster name_*/nodes node and starts watching for any changes in the list. Then ES updates the list of nodes in the cluster state to match the list of nodes in ZK. When the watcher on the /es/clusters/*_cluster name_*/nodes node is triggered the Node List Update operation is repeated. In other words ephemeral nodes in /es/clusters/*_cluster name_*/nodes perform the role of node fault detections.
