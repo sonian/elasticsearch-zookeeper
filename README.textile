@@ -2,6 +2,8 @@ h1. ZooKeeper Plugin
 
 h2. Usage
 
+h3. Installation
+
 * Download ZooKeeper 3.3.3 from http://zookeeper.apache.org/releases.html
 * Unzip the ZooKeeper archive into a directory, rename conf/zoo-sample.cnf into zoo.cnf and modify dataDir= line to point to a directory on your machine. Start ZooKeeper by running bin/zkServer.sh start.
 * Install ZooKeeper plugin to ES
@@ -18,6 +20,44 @@ sonian.elasticsearch.zookeeper:
 
 * Start ES
 
+The only mandatory parameter in the ZooKeeper plugin configuration is *client.host*. This parameter should contain an address of ZooKeeper server or comma-separate list of addresses if multiple servers are used.
+
+
+h3. ZooKeeper state publishing
+
+The *sonian.elasticsearch.zookeeper.discovery.state_publishing.enabled* parameter specifies if the plugin should use ZooKeeper to publish cluster state. By default, the cluster state is published using *org.elasticsearch.discovery.zen.publish.PublishClusterStateAction*, which causes master to send cluster state to all other nodes. If ZooKeeper-based state publishing is enabled, state is published inside ZooKeeper and all nodes are reading state from the ZooKeeper as soon as it changes.
+
+h3. Settings
+
+The *sonian.elasticsearch.zookeeper.settings.enabled* parameter specifies if the plugin should attempt to load configuration form ZooKeeper.
+
+ZooKeeper Discovery plug-in can load settings from zookeeper. The *bin/zookeeper* utility can be used to upload new settings to ZooKeeper. The settings can be upload on per cluster basis as well as globally.
+
+Assuming that current directory is ES_HOME, to upload cluster settings use:
+
+<pre>
+$ sh plugins/zookeeper/bin/zookeeper set elasticsearch.json
+</pre>
+
+To upload global settings use:
+
+<pre>
+$ sh plugins/zookeeper/bin/zookeeper set-global elasticsearch.json
+</pre>
+
+To retrieve current global or cluster settings use one of the following commands:
+
+<pre>
+$ sh plugins/zookeeper/bin/zookeeper get
+$ sh plugins/zookeeper/bin/zookeeper get-global
+</pre>
+
+The settings are loaded in the following order:
+* Local settings
+* Global settings
+* Cluster settings
+
+The later loaded settings take precedence. In other words, cluster settings override global settings and global settings override local settings.
 
 h2. Operation
 
