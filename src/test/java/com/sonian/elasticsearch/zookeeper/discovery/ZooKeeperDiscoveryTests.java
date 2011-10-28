@@ -547,7 +547,7 @@ public class ZooKeeperDiscoveryTests extends AbstractZooKeeperTests {
         }
 
         public ClusterState await() throws InterruptedException {
-            return await(1, TimeUnit.SECONDS);
+            return await(5, TimeUnit.SECONDS);
         }
 
         public ClusterState await(long timeout, TimeUnit timeUnit) throws InterruptedException {

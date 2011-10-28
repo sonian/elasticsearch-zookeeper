@@ -104,7 +104,7 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
 
         zk1.stop();
 
-        assertThat(latch.await(1, TimeUnit.SECONDS), equalTo(true));
+        assertThat(latch.await(5, TimeUnit.SECONDS), equalTo(true));
 
         assertThat(masters[0], anyOf(equalTo("id2".getBytes()), equalTo("id3".getBytes())));
         assertThat(masters[0], equalTo(masters[1]));
@@ -162,7 +162,7 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
         zk1.setOrCreateTransientNode("/tests/nodes/id3", "id3".getBytes());
         zk1.deleteNode("/tests/nodes/id2");
 
-        assertThat(latch.await(1, TimeUnit.SECONDS), equalTo(true));
+        assertThat(latch.await(5, TimeUnit.SECONDS), equalTo(true));
 
         assertThat(lists.get(0).toArray(), equalTo(new Object[]{"id1"}));
         assertThat(lists.get(1).toArray(), equalTo(new Object[]{"id1", "id2"}));
@@ -188,7 +188,7 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
         }), nullValue());
 
         assertThat(zk2.getOrCreateTransientNode("/tests/master", "node1".getBytes(), null), equalTo("node1".getBytes()));
-        assertThat(latch.await(1, TimeUnit.SECONDS), equalTo(true));
+        assertThat(latch.await(5, TimeUnit.SECONDS), equalTo(true));
         assertThat(deletedCalled.get(), equalTo(false));
 
     }
@@ -212,7 +212,7 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
 
         assertThat(deletedCalled.get(), equalTo(false));
         zk1.stop();
-        assertThat(latch.await(1, TimeUnit.SECONDS), equalTo(true));
+        assertThat(latch.await(5, TimeUnit.SECONDS), equalTo(true));
         assertThat(createdCalled.get(), equalTo(false));
 
 
