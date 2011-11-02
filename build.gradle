@@ -10,41 +10,14 @@ version = '0.17.0'
 elasticSearchVerstion = '0.17.7'
 zooKeeperVersion = '3.3.3'
 group = 'com.sonian'
+githubUser = 'sonian'
+versionPath = '/com/sonian/elasticsearch/plugin/zookeeper'
+pluginName = 'ZooKeeper'
 
-buildTime = new Date()
-SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-buildTimeStr = sdf.format(buildTime)
-
-mavenRepoUser = System.getenv("REPO_USER")
-mavenRepoPass = System.getenv("REPO_PASS")
-
-test {
-    useTestNG()
-}
-
-mavenRepoUrl = System.getenv("REPO_URL");
-if (mavenRepoUrl == null) {
-    mavenRepoUrl = "http://oss.sonatype.org/service/local/staging/deploy/maven2/"
-}
-mavenSnapshotRepoUrl = System.getenv("SNAPSHOT_REPO_URL");
-if (mavenSnapshotRepoUrl == null) {
-    mavenSnapshotRepoUrl = "http://oss.sonatype.org/content/repositories/snapshots"
-}
 
 configurations {
     deployerJars
     dist
-}
-
-repositories {
-    mavenCentral()
-    mavenRepo urls: 'https://repository.jboss.org/nexus/content/groups/public'
-    mavenRepo urls: 'http://repository.codehaus.org/'
-    mavenRepo urls: 'http://elasticsearch.googlecode.com/svn/maven'
-    mavenRepo urls: 'http://oss.sonatype.org/content/repositories/releases'
-    mavenRepo urls: 'http://oss.sonatype.org/content/repositories/snapshots'
-    mavenRepo urls: 'http://download.java.net/maven/2/'
 }
 
 dependencies {
@@ -62,9 +35,43 @@ dependencies {
     runtime 'log4j:log4j:1.2.16'
 }
 
+//=====================================================================================================================
+buildTime = new Date()
+SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+buildTimeStr = sdf.format(buildTime)
+
+test {
+    useTestNG()
+}
+
+mavenRepoUser = System.getenv("REPO_USER")
+mavenRepoPass = System.getenv("REPO_PASS")
+
+mavenRepoUrl = System.getenv("REPO_URL");
+if (mavenRepoUrl == null) {
+    mavenRepoUrl = "http://oss.sonatype.org/service/local/staging/deploy/maven2/"
+}
+mavenSnapshotRepoUrl = System.getenv("SNAPSHOT_REPO_URL");
+if (mavenSnapshotRepoUrl == null) {
+    mavenSnapshotRepoUrl = "http://oss.sonatype.org/content/repositories/snapshots"
+}
+
+repositories {
+    mavenCentral()
+    mavenRepo urls: 'https://repository.jboss.org/nexus/content/groups/public'
+    mavenRepo urls: 'http://repository.codehaus.org/'
+    mavenRepo urls: 'http://elasticsearch.googlecode.com/svn/maven'
+    mavenRepo urls: 'http://oss.sonatype.org/content/repositories/releases'
+    mavenRepo urls: 'http://oss.sonatype.org/content/repositories/snapshots'
+    mavenRepo urls: 'http://download.java.net/maven/2/'
+}
+
 ideaProject {
     javaVersion = '1.6'
-    version = '1.6'
+    withXml { provider ->
+        provider.node.component.find { it.@name == 'VcsDirectoryMappings' }.mapping.@vcs = 'Git'
+    }
 }
 
 task dist(type: Zip) {
@@ -81,7 +88,7 @@ processResources.doLast {
     versionProps.setProperty("number", rootProject.version)
     versionProps.setProperty("date", buildTimeStr)
 
-    File versionFile = new File((File) sourceSets.main.classesDir, "/com/sonian/elasticsearch/plugin/zookeeper/version.properties")
+    File versionFile = new File((File) sourceSets.main.classesDir, versionPath + '/version.properties')
     versionFile.parentFile.mkdirs()
     versionFile.withOutputStream {
         versionProps.store(it, '')
@@ -115,8 +122,8 @@ uploadArchives {
 
         pom.project {
             inceptionYear '2011'
-            name 'elasticsearch-zookeeper'
-            description 'ZooKeeper plugin for elasticsearch'
+            name rootProject.name
+            description pluginName + ' plugin for elasticsearch'
             licenses {
                 license {
                     name 'The Apache Software License, Version 2.0'
@@ -125,9 +132,9 @@ uploadArchives {
                 }
             }
             scm {
-                connection 'git://github.com/sonian/elasticsearch-zookeeper.git'
-                developerConnection 'git@github.com:sonian/elasticsearch-zookeeper.git'
-                url 'http://github.com/sonian/elasticsearch-zookeeper'
+                connection 'git://github.com/' + githubUser + '/' + rootProject.name + '.git'
+                developerConnection 'git@github.com:' + githubUser + '/' + rootProject.name + '.git'
+                url 'http://github.com/' + githubUser + '/' + rootProject.name
             }
         }
         pom.whenConfigured {pom ->
@@ -144,3 +151,4 @@ uploadArchives {
 task wrapper(type: Wrapper) {
     gradleVersion = '1.0-milestone-3'
 }
+//=====================================================================================================================
