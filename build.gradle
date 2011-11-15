@@ -6,7 +6,7 @@ apply plugin: 'idea'
 
 sourceCompatibility = '1.6'
 targetCompatibility = '1.6'
-version = '0.17.0'
+version = '0.17.1-SNAPSHOT'
 elasticSearchVersion = '0.17.7'
 zooKeeperVersion = '3.3.3'
 group = 'com.sonian'
