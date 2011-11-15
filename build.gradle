@@ -7,7 +7,7 @@ apply plugin: 'idea'
 sourceCompatibility = '1.6'
 targetCompatibility = '1.6'
 version = '0.17.0'
-elasticSearchVerstion = '0.17.7'
+elasticSearchVersion = '0.17.7'
 zooKeeperVersion = '3.3.3'
 group = 'com.sonian'
 githubUser = 'sonian'
@@ -21,7 +21,7 @@ configurations {
 }
 
 dependencies {
-    compile group: 'org.elasticsearch', name: 'elasticsearch', version: elasticSearchVerstion
+    compile group: 'org.elasticsearch', name: 'elasticsearch', version: elasticSearchVersion
     compile group: 'org.apache.zookeeper', name: 'zookeeper', version: zooKeeperVersion, transitive: false
 
     testCompile group: 'org.testng', name: 'testng', version: '6.1.1'
