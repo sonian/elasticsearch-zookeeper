@@ -25,6 +25,7 @@ import org.elasticsearch.cluster.*;
 import org.elasticsearch.cluster.block.ClusterBlocks;
 import org.elasticsearch.cluster.metadata.MetaData;
 import org.elasticsearch.cluster.node.DiscoveryNode;
+import org.elasticsearch.cluster.node.DiscoveryNodeService;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.routing.RoutingTable;
 import org.elasticsearch.common.UUID;
@@ -51,7 +52,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static org.elasticsearch.cluster.ClusterState.newClusterStateBuilder;
-import static org.elasticsearch.cluster.node.DiscoveryNode.buildCommonNodesAttributes;
 import static org.elasticsearch.cluster.node.DiscoveryNodes.newNodesBuilder;
 
 /**
@@ -90,16 +90,19 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
 
     private final SessionResetListener sessionResetListener = new SessionResetListener();
 
+    private final DiscoveryNodeService discoveryNodeService;
+
     private final ZooKeeperEnvironment environment;
 
 
     @Inject public ZooKeeperDiscovery(Settings settings, ZooKeeperEnvironment environment, ClusterName clusterName, ThreadPool threadPool,
-                                      TransportService transportService, ClusterService clusterService,
+                                      TransportService transportService, ClusterService clusterService, DiscoveryNodeService discoveryNodeService,
                                       ZooKeeperClient zooKeeperClient) {
         super(settings);
         this.clusterName = clusterName;
         this.clusterService = clusterService;
         this.transportService = transportService;
+        this.discoveryNodeService = discoveryNodeService;
         this.zooKeeperClient = zooKeeperClient;
         this.threadPool = threadPool;
         this.environment = environment;
@@ -111,10 +114,9 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
     }
 
     @Override protected void doStart() throws ElasticSearchException {
-        Map<String, String> nodeAttributes = buildCommonNodesAttributes(settings);
         // note, we rely on the fact that its a new id each time we start, see FD and "kill -9" handling
         String nodeId = UUID.randomBase64UUID();
-        localNode = new DiscoveryNode(settings.get("name"), nodeId, transportService.boundAddress().publishAddress(), nodeAttributes);
+        localNode = new DiscoveryNode(settings.get("name"), nodeId, transportService.boundAddress().publishAddress(), discoveryNodeService.buildAttributes());
         localNodePath = nodePath(localNode.id());
         latestDiscoNodes = new DiscoveryNodes.Builder().put(localNode).localNodeId(localNode.id()).build();
         initialStateSent.set(false);
