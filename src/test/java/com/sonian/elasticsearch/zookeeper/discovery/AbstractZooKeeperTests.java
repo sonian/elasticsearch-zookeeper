@@ -64,7 +64,7 @@ public abstract class AbstractZooKeeperTests {
 
     @BeforeClass public void startZooKeeper() throws IOException, InterruptedException {
         Environment tempEnvironment = new Environment(defaultSettings);
-        File zooKeeperDataDirectory = new File(tempEnvironment.dataFile(), "zookeeper");
+        File zooKeeperDataDirectory = new File(tempEnvironment.dataFiles()[0], "zookeeper");
         logger.info("Deleting zookeeper directory {}", zooKeeperDataDirectory);
         deleteDirectory(zooKeeperDataDirectory);
         embeddedZooKeeperService = new EmbeddedZooKeeperService(defaultSettings, tempEnvironment);
