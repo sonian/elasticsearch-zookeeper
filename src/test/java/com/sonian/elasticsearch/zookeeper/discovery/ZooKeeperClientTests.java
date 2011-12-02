@@ -125,21 +125,17 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
 
         private ZooKeeperClient zk;
         private List<List<String>> lists;
-        private CountDownLatch latch;
+        private volatile CountDownLatch latch;
 
-        public RelistListener(ZooKeeperClient zk, List<List<String>> lists, CountDownLatch latch) {
+        public RelistListener(ZooKeeperClient zk, List<List<String>> lists) {
             this.zk = zk;
             this.lists = lists;
-            this.latch = latch;
+            this.latch = new CountDownLatch(1);
         }
 
         @Override public synchronized void onNodeListChanged() {
-            ZooKeeperClient.NodeListChangedListener listener = null;
-            if (latch.getCount() > 1) {
-                listener = this;
-            }
             try {
-                Set<String> res = zk.listNodes("/tests/nodes", listener);
+                Set<String> res = zk.listNodes("/tests/nodes", this);
                 List<String> resList = new ArrayList<String>(res);
                 Collections.sort(resList);
                 lists.add(resList);
@@ -149,26 +145,40 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
             }
         }
 
+        public boolean await() throws InterruptedException {
+            return latch.await(5, TimeUnit.SECONDS);
+        }
+
+        public synchronized void resetLatch() {
+            latch = new CountDownLatch(1);
+        }
+
     }
 
     @Test public void testListNodes() throws Exception {
         List<List<String>> lists = new ArrayList<List<String>>();
         ZooKeeperClient zk1 = buildZooKeeper();
-        CountDownLatch latch = new CountDownLatch(4);
-        RelistListener listener = new RelistListener(zk1, lists, latch);
+        RelistListener listener = new RelistListener(zk1, lists);
         assertThat(zk1.listNodes("/tests/nodes", listener).size(), equalTo(0));
         zk1.setOrCreateTransientNode("/tests/nodes/id1", "id1".getBytes());
+        assertThat(listener.await(), equalTo(true));
+        listener.resetLatch();
         zk1.setOrCreateTransientNode("/tests/nodes/id2", "id2".getBytes());
+        assertThat(listener.await(), equalTo(true));
+        listener.resetLatch();
         zk1.setOrCreateTransientNode("/tests/nodes/id3", "id3".getBytes());
+        assertThat(listener.await(), equalTo(true));
+        listener.resetLatch();
         zk1.deleteNode("/tests/nodes/id2");
-
-        assertThat(latch.await(5, TimeUnit.SECONDS), equalTo(true));
+        assertThat(listener.await(), equalTo(true));
+        listener.resetLatch();
 
         assertThat(lists.get(0).toArray(), equalTo(new Object[]{"id1"}));
         assertThat(lists.get(1).toArray(), equalTo(new Object[]{"id1", "id2"}));
         assertThat(lists.get(2).toArray(), equalTo(new Object[]{"id1", "id2", "id3"}));
         assertThat(lists.get(3).toArray(), equalTo(new Object[]{"id1", "id3"}));
         assertThat(lists.size(), equalTo(4));
+        zk1.listNodes("/tests/nodes", null);
     }
 
     @Test public void testFindMasterWithNoInitialMaster() throws Exception {
