@@ -41,6 +41,8 @@ public interface ZooKeeperClient extends LifecycleComponent<ZooKeeperClient> {
 
     void deleteNode(String path) throws InterruptedException;
 
+    void deleteNodeRecursively(String path) throws InterruptedException;
+
 
     String createLargeSequentialNode(String pathPrefix, byte[] data) throws InterruptedException;
 
