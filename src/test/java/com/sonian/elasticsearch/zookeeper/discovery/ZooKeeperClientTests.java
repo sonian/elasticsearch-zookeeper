@@ -16,6 +16,7 @@
 
 package com.sonian.elasticsearch.zookeeper.discovery;
 
+import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClientException;
 import org.elasticsearch.ElasticSearchException;
 import com.sonian.elasticsearch.zookeeper.client.AbstractNodeListener;
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClient;
@@ -38,17 +39,20 @@ import static org.hamcrest.Matchers.*;
  */
 public class ZooKeeperClientTests extends AbstractZooKeeperTests {
 
-    @BeforeClass public void createTestPaths() throws Exception {
+    @BeforeClass
+    public void createTestPaths() throws Exception {
         buildZooKeeper().createPersistentNode("/tests/nodes");
     }
 
-    @Test public void testElectionSequence() throws Exception {
+    @Test
+    public void testElectionSequence() throws Exception {
         ZooKeeperClient zk1 = buildZooKeeper();
         ZooKeeperClient zk2 = buildZooKeeper();
         final boolean[] callbackForSelf = new boolean[1];
 
         assertThat(zk1.getOrCreateTransientNode("/tests/master", "id1".getBytes(), new AbstractNodeListener() {
-            @Override public void onNodeDeleted(String id) {
+            @Override
+            public void onNodeDeleted(String id) {
                 callbackForSelf[0] = true;
             }
         }), equalTo("id1".getBytes()));
@@ -56,7 +60,8 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
         final CountDownLatch latch = new CountDownLatch(1);
 
         assertThat(zk2.getOrCreateTransientNode("/tests/master", "id2".getBytes(), new AbstractNodeListener() {
-            @Override public void onNodeDeleted(String id) {
+            @Override
+            public void onNodeDeleted(String id) {
                 latch.countDown();
             }
         }), equalTo("id1".getBytes()));
@@ -70,7 +75,8 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
 
     }
 
-    @Test public void testThreeNodeElection() throws Exception {
+    @Test
+    public void testThreeNodeElection() throws Exception {
         ZooKeeperClient zk1 = buildZooKeeper();
         final ZooKeeperClient zk2 = buildZooKeeper();
         final ZooKeeperClient zk3 = buildZooKeeper();
@@ -81,7 +87,8 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
         final CountDownLatch latch = new CountDownLatch(2);
 
         assertThat(zk2.getOrCreateTransientNode("/tests/master", "id2".getBytes(), new AbstractNodeListener() {
-            @Override public void onNodeDeleted(String id) {
+            @Override
+            public void onNodeDeleted(String id) {
                 try {
                     masters[0] = zk2.getOrCreateTransientNode("/tests/master", "id2".getBytes(), null);
                 } catch (InterruptedException ex) {
@@ -92,7 +99,8 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
         }), equalTo("id1".getBytes()));
 
         assertThat(zk3.getOrCreateTransientNode("/tests/master", "id3".getBytes(), new AbstractNodeListener() {
-            @Override public void onNodeDeleted(String id) {
+            @Override
+            public void onNodeDeleted(String id) {
                 try {
                     masters[1] = zk2.getOrCreateTransientNode("/tests/master", "id2".getBytes(), null);
                 } catch (InterruptedException ex) {
@@ -111,7 +119,8 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
         logger.error("New Master is " + masters[0]);
     }
 
-    @Test public void testRegisterNode() throws Exception {
+    @Test
+    public void testRegisterNode() throws Exception {
         ZooKeeperClient zk1 = buildZooKeeper();
 
         zk1.setOrCreateTransientNode("/tests/nodes/node1", "node1data".getBytes());
@@ -133,7 +142,8 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
             this.latch = new CountDownLatch(1);
         }
 
-        @Override public synchronized void onNodeListChanged() {
+        @Override
+        public synchronized void onNodeListChanged() {
             try {
                 Set<String> res = zk.listNodes("/tests/nodes", this);
                 List<String> resList = new ArrayList<String>(res);
@@ -155,7 +165,8 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
 
     }
 
-    @Test public void testListNodes() throws Exception {
+    @Test
+    public void testListNodes() throws Exception {
         List<List<String>> lists = new ArrayList<List<String>>();
         ZooKeeperClient zk1 = buildZooKeeper();
         RelistListener listener = new RelistListener(zk1, lists);
@@ -181,18 +192,21 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
         zk1.listNodes("/tests/nodes", null);
     }
 
-    @Test public void testFindMasterWithNoInitialMaster() throws Exception {
+    @Test
+    public void testFindMasterWithNoInitialMaster() throws Exception {
         ZooKeeperClient zk1 = buildZooKeeper();
         ZooKeeperClient zk2 = buildZooKeeper();
         final AtomicBoolean deletedCalled = new AtomicBoolean();
         final CountDownLatch latch = new CountDownLatch(1);
 
         assertThat(zk1.getNode("/tests/master", new AbstractNodeListener() {
-            @Override public void onNodeCreated(String id) {
+            @Override
+            public void onNodeCreated(String id) {
                 latch.countDown();
             }
 
-            @Override public void onNodeDeleted(String id) {
+            @Override
+            public void onNodeDeleted(String id) {
                 deletedCalled.set(true);
             }
         }), nullValue());
@@ -203,7 +217,8 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
 
     }
 
-    @Test public void testFindMasterWithInitialMaster() throws Exception {
+    @Test
+    public void testFindMasterWithInitialMaster() throws Exception {
         ZooKeeperClient zk1 = buildZooKeeper();
         ZooKeeperClient zk2 = buildZooKeeper();
         final AtomicBoolean createdCalled = new AtomicBoolean();
@@ -211,11 +226,13 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
         final CountDownLatch latch = new CountDownLatch(1);
         assertThat(zk1.getOrCreateTransientNode("/tests/master", "node1".getBytes(), null), equalTo("node1".getBytes()));
         assertThat(zk2.getNode("/tests/master", new AbstractNodeListener() {
-            @Override public void onNodeCreated(String id) {
+            @Override
+            public void onNodeCreated(String id) {
                 createdCalled.set(true);
             }
 
-            @Override public void onNodeDeleted(String id) {
+            @Override
+            public void onNodeDeleted(String id) {
                 latch.countDown();
             }
         }), equalTo("node1".getBytes()));
@@ -224,8 +241,33 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
         zk1.stop();
         assertThat(latch.await(5, TimeUnit.SECONDS), equalTo(true));
         assertThat(createdCalled.get(), equalTo(false));
+    }
 
 
+    @Test
+    public void testDeleteNode() throws Exception {
+        ZooKeeperClient zk1 = buildZooKeeper();
+        zk1.createPersistentNode("/tests/parent-node");
+        zk1.createPersistentNode("/tests/parent-node/child-node1");
+        zk1.createPersistentNode("/tests/parent-node/child-node2");
+        zk1.createPersistentNode("/tests/parent-node/child-node3");
+        zk1.createPersistentNode("/tests/parent-node/child-node1/child-node4");
+        zk1.createPersistentNode("/tests/parent-node/child-node1/child-node5");
+        // Make sure node exist
+        assertThat(zk1.getNode("/tests/parent-node/child-node1/child-node4", null), notNullValue());
+        assertThat(zk1.getNode("/tests/parent-node", null), notNullValue());
+
+        try {
+            zk1.deleteNode("/tests/parent-node");
+            assertThat("Shouldn't delete non-empty node by default", false);
+        } catch (ZooKeeperClientException ex) {
+            // Ignore
+        }
+
+        zk1.deleteNodeRecursively("/tests/parent-node");
+        assertThat(zk1.getNode("/tests/parent-node/child-node1/child-node3", null), nullValue());
+        assertThat(zk1.getNode("/tests/parent-node", null), nullValue());
+        assertThat(zk1.getNode("/tests", null), notNullValue());
     }
 
 }

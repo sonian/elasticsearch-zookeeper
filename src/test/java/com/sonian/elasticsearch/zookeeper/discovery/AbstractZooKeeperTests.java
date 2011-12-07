@@ -19,6 +19,7 @@ package com.sonian.elasticsearch.zookeeper.discovery;
 import org.elasticsearch.cluster.ClusterName;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.network.NetworkUtils;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import com.sonian.elasticsearch.zookeeper.discovery.embedded.EmbeddedZooKeeperService;
@@ -47,7 +48,10 @@ public abstract class AbstractZooKeeperTests {
 
     protected final List<ZooKeeperClient> zooKeeperClients = new ArrayList<ZooKeeperClient>();
 
-    private Settings defaultSettings = ImmutableSettings.Builder.EMPTY_SETTINGS;
+    private Settings defaultSettings = ImmutableSettings
+            .settingsBuilder()
+            .put("cluster.name", "test-cluster-" + NetworkUtils.getLocalAddress().getHostName())
+            .build();
 
     private ZooKeeperEnvironment environment;
 
