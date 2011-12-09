@@ -19,6 +19,7 @@ package com.sonian.elasticsearch.zookeeper.discovery;
 
 import com.sonian.elasticsearch.zookeeper.client.*;
 import org.elasticsearch.ElasticSearchException;
+import org.elasticsearch.Version;
 import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.block.ClusterBlocks;
 import org.elasticsearch.cluster.metadata.MetaData;
@@ -36,12 +37,13 @@ import org.elasticsearch.discovery.zen.DiscoveryNodesProvider;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Publishes and retrieves cluster state using zookeeper.
- *
+ * <p/>
  * By default cluster state is stored in /es/elasticsearch/state node. State is published in several parts.
  * Each part is updated only if it got changed and then /es/elasticsearch/state/state node is updated to
  * reflect the latest versions of the parts.
@@ -60,6 +62,7 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
 
     private final DiscoveryNodesProvider nodesProvider;
 
+    private final String clusterStateVersion = Version.CURRENT.number();
 
     public ZooKeeperClusterState(Settings settings, ZooKeeperEnvironment environment, ZooKeeperClient zooKeeperClient, DiscoveryNodesProvider nodesProvider) {
         super(settings);
@@ -82,8 +85,9 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
         publishingLock.lock();
         try {
             logger.trace("Publishing new cluster state");
-            final String statePath = environment.stateNodePath() + "/" + "state";
+            final String statePath = environment.statePartsNodePath();
             final BytesStreamOutput buf = new BytesStreamOutput();
+            buf.writeUTF(clusterStateVersion());
             buf.writeLong(state.version());
             for (ClusterStatePart<?> part : this.parts) {
                 buf.writeUTF(part.publishClusterStatePart(state));
@@ -118,15 +122,17 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
             }
             logger.trace("Retrieving new cluster state");
 
-            final String statePath = environment.stateNodePath() + "/" + "state";
+            final String statePath = environment.statePartsNodePath();
             ZooKeeperClient.NodeListener nodeListener;
             if (newClusterStateListener != null) {
                 nodeListener = new AbstractNodeListener() {
-                    @Override public void onNodeCreated(String id) {
+                    @Override
+                    public void onNodeCreated(String id) {
                         updateClusterState(newClusterStateListener);
                     }
 
-                    @Override public void onNodeDataChanged(String id) {
+                    @Override
+                    public void onNodeDataChanged(String id) {
                         updateClusterState(newClusterStateListener);
                     }
                 };
@@ -138,6 +144,11 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
                 return null;
             }
             final BytesStreamInput buf = new BytesStreamInput(stateBuf);
+            String clusterStateVersion = buf.readUTF();
+            if (!clusterStateVersion().equals(clusterStateVersion)) {
+                throw new ZooKeeperIncompatibleStateVersionException("Expected: " + clusterStateVersion() + ", actual: " + clusterStateVersion);
+            }
+
             ClusterState.Builder builder = ClusterState.newClusterStateBuilder()
                     .version(buf.readLong());
             for (ClusterStatePart<?> part : this.parts) {
@@ -158,13 +169,28 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
 
     /**
      * Makes sure that internal cache structures are in sync with zookeeper
-     *
+     * <p/>
      * This method should be called when node becomes master and switches from retrieving cluster state
      * to publishing cluster state.
      */
     public void syncClusterState() throws ElasticSearchException, InterruptedException {
         // To prepare for publishing master state, make sure that we are in sync with zooKeeper
-        retrieve(null);
+        try {
+            retrieve(null);
+        } catch (ZooKeeperIncompatibleStateVersionException ex) {
+            logger.info("Incompatible version of state found - cleaning. {}", ex.getMessage());
+            cleanClusterStateNode();
+        }
+    }
+
+    private void cleanClusterStateNode() throws ElasticSearchException, InterruptedException {
+        Set<String> parts = zooKeeperClient.listNodes(environment.stateNodePath(), null);
+        for (String part : parts) {
+            // Don't delete the part node itself. Other nodes might already have watchers set on this node
+            if (!"parts".equals(part)) {
+                 zooKeeperClient.deleteNodeRecursively(environment.stateNodePath() + "/" + part);
+            }
+        }
     }
 
     private void updateClusterState(NewClusterStateListener newClusterStateListener) {
@@ -180,7 +206,8 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
         }
     }
 
-    @Override protected void doStart() throws ElasticSearchException {
+    @Override
+    protected void doStart() throws ElasticSearchException {
         try {
             zooKeeperClient.createPersistentNode(environment.stateNodePath());
         } catch (InterruptedException ex) {
@@ -188,10 +215,16 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
         }
     }
 
-    @Override protected void doStop() throws ElasticSearchException {
+    @Override
+    protected void doStop() throws ElasticSearchException {
     }
 
-    @Override protected void doClose() throws ElasticSearchException {
+    @Override
+    protected void doClose() throws ElasticSearchException {
+    }
+
+    protected String clusterStateVersion() {
+        return clusterStateVersion;
     }
 
 
@@ -203,87 +236,107 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
     // based discovery is merged to master.
     private void initClusterStatePersistence() {
         parts.add(new ClusterStatePart<RoutingTable>("routingTable") {
-            @Override public void writeTo(RoutingTable statePart, StreamOutput out) throws IOException {
+            @Override
+            public void writeTo(RoutingTable statePart, StreamOutput out) throws IOException {
                 RoutingTable.Builder.writeTo(statePart, out);
             }
 
-            @Override public RoutingTable readFrom(StreamInput in) throws IOException {
+            @Override
+            public RoutingTable readFrom(StreamInput in) throws IOException {
                 return RoutingTable.Builder.readFrom(in);
             }
 
-            @Override public RoutingTable get(ClusterState state) {
+            @Override
+            public RoutingTable get(ClusterState state) {
                 return state.getRoutingTable();
             }
 
-            @Override public ClusterState.Builder set(ClusterState.Builder builder, RoutingTable val) {
+            @Override
+            public ClusterState.Builder set(ClusterState.Builder builder, RoutingTable val) {
                 return builder.routingTable(val);
             }
         });
         parts.add(new ClusterStatePart<DiscoveryNodes>("discoveryNodes") {
-            @Override public void writeTo(DiscoveryNodes statePart, StreamOutput out) throws IOException {
+            @Override
+            public void writeTo(DiscoveryNodes statePart, StreamOutput out) throws IOException {
                 DiscoveryNodes.Builder.writeTo(statePart, out);
             }
 
-            @Override public DiscoveryNodes readFrom(StreamInput in) throws IOException {
+            @Override
+            public DiscoveryNodes readFrom(StreamInput in) throws IOException {
                 return DiscoveryNodes.Builder.readFrom(in, nodesProvider.nodes().localNode());
             }
 
-            @Override public DiscoveryNodes get(ClusterState state) {
+            @Override
+            public DiscoveryNodes get(ClusterState state) {
                 return state.getNodes();
             }
 
-            @Override public ClusterState.Builder set(ClusterState.Builder builder, DiscoveryNodes val) {
+            @Override
+            public ClusterState.Builder set(ClusterState.Builder builder, DiscoveryNodes val) {
                 return builder.nodes(val);
             }
         });
         parts.add(new ClusterStatePart<MetaData>("metaData") {
-            @Override public void writeTo(MetaData statePart, StreamOutput out) throws IOException {
+            @Override
+            public void writeTo(MetaData statePart, StreamOutput out) throws IOException {
                 MetaData.Builder.writeTo(statePart, out);
             }
 
-            @Override public MetaData readFrom(StreamInput in) throws IOException {
+            @Override
+            public MetaData readFrom(StreamInput in) throws IOException {
                 return MetaData.Builder.readFrom(in);
             }
 
-            @Override public MetaData get(ClusterState state) {
+            @Override
+            public MetaData get(ClusterState state) {
                 return state.metaData();
             }
 
-            @Override public ClusterState.Builder set(ClusterState.Builder builder, MetaData val) {
+            @Override
+            public ClusterState.Builder set(ClusterState.Builder builder, MetaData val) {
                 return builder.metaData(val);
             }
         });
         parts.add(new ClusterStatePart<ClusterBlocks>("clusterBlocks") {
-            @Override public void writeTo(ClusterBlocks statePart, StreamOutput out) throws IOException {
+            @Override
+            public void writeTo(ClusterBlocks statePart, StreamOutput out) throws IOException {
                 ClusterBlocks.Builder.writeClusterBlocks(statePart, out);
             }
 
-            @Override public ClusterBlocks readFrom(StreamInput in) throws IOException {
+            @Override
+            public ClusterBlocks readFrom(StreamInput in) throws IOException {
                 return ClusterBlocks.Builder.readClusterBlocks(in);
             }
 
-            @Override public ClusterBlocks get(ClusterState state) {
+            @Override
+            public ClusterBlocks get(ClusterState state) {
                 return state.blocks();
             }
 
-            @Override public ClusterState.Builder set(ClusterState.Builder builder, ClusterBlocks val) {
+            @Override
+            public ClusterState.Builder set(ClusterState.Builder builder, ClusterBlocks val) {
                 return builder.blocks(val);
             }
         });
         parts.add(new ClusterStatePart<AllocationExplanation>("allocationExplanation") {
-            @Override public void writeTo(AllocationExplanation statePart, StreamOutput out) throws IOException {
+            @Override
+            public void writeTo(AllocationExplanation statePart, StreamOutput out) throws IOException {
                 statePart.writeTo(out);
             }
 
-            @Override public AllocationExplanation readFrom(StreamInput in) throws IOException {
+            @Override
+            public AllocationExplanation readFrom(StreamInput in) throws IOException {
                 return AllocationExplanation.readAllocationExplanation(in);
             }
 
-            @Override public AllocationExplanation get(ClusterState state) {
+            @Override
+            public AllocationExplanation get(ClusterState state) {
                 return state.allocationExplanation();
             }
 
-            @Override public ClusterState.Builder set(ClusterState.Builder builder, AllocationExplanation val) {
+            @Override
+            public ClusterState.Builder set(ClusterState.Builder builder, AllocationExplanation val) {
                 return builder.allocationExplanation(val);
             }
         });
