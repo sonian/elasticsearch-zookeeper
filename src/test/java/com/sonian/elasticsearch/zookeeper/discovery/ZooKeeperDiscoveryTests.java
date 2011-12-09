@@ -27,12 +27,13 @@ import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.ClusterStateListener;
 import org.elasticsearch.cluster.block.ClusterBlockException;
 import org.elasticsearch.cluster.node.DiscoveryNode;
+import org.elasticsearch.cluster.node.DiscoveryNodes;
+import org.elasticsearch.cluster.routing.RoutingTable;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.internal.InternalNode;
-import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClient;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -293,6 +294,37 @@ public class ZooKeeperDiscoveryTests extends AbstractZooKeeperTests {
         node("node1").stop();
         assertThat(clientMonitor.await().nodes().masterNode().name(), equalTo("node2"));
     }
+
+    @Test public void testRecoveryAfterVersionChange() throws Exception {
+        // Create incompatible state
+        RoutingTable routingTable = testRoutingTable();
+        DiscoveryNodes nodes = testDiscoveryNodes();
+        ClusterState initialState = testClusterState(routingTable, nodes);
+        ZooKeeperClusterState zkStateOld = buildZooKeeperClusterState(nodes, "0.0.1");
+        zkStateOld.start();
+        zkStateOld.publish(initialState);
+        zkStateOld.stop();
+
+        // Create a client node
+        buildNode("client", ImmutableSettings.settingsBuilder()
+                .put("node.client", true)
+                .put("discovery.initial_state_timeout", 100, TimeUnit.MILLISECONDS)
+        );
+        // Create a master node
+        buildNode("node1");
+
+        // Start client before master
+        ClusterStateMonitor clientMonitor = new ClusterStateMonitor("client");
+        ClusterStateMonitor nodeMonitor = new ClusterStateMonitor("node1");
+        node("client").start();
+        node("node1").start();
+        ClusterState nodeState = nodeMonitor.await();
+        ClusterState clientState = clientMonitor.await();
+        assertThat(clientState.nodes().masterNode().name(), equalTo("node1"));
+        assertThat(nodeState.nodes().masterNode().name(), equalTo("node1"));
+
+    }
+
 
     @Test public void testSessionExpiration() throws Exception {
         buildNode("node1");
