@@ -17,14 +17,11 @@
 package com.sonian.elasticsearch.zookeeper.discovery;
 
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClient;
-import com.sonian.elasticsearch.zookeeper.client.ZooKeeperEnvironment;
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperIncompatibleStateVersionException;
 import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.routing.*;
 import org.elasticsearch.common.settings.ImmutableSettings;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.discovery.zen.DiscoveryNodesProvider;
 import org.testng.annotations.Test;
 
 import java.util.concurrent.CountDownLatch;
@@ -40,32 +37,6 @@ public class ZooKeeperClusterStateTests extends AbstractZooKeeperTests {
 
     public ZooKeeperClusterStateTests() {
         putDefaultSettings(ImmutableSettings.settingsBuilder().put("zookeeper.maxnodesize", 10).build());
-    }
-
-    ZooKeeperClusterState buildZooKeeperClusterState(DiscoveryNodes nodes) {
-        return buildZooKeeperClusterState(nodes, null);
-    }
-
-    ZooKeeperClusterState buildZooKeeperClusterState(final DiscoveryNodes nodes, String clusterStateVersion) {
-        DiscoveryNodesProvider provider = new DiscoveryNodesProvider() {
-            @Override
-            public DiscoveryNodes nodes() {
-                return nodes;
-            }
-        };
-        ZooKeeperClient zk = buildZooKeeper(defaultSettings());
-        if (clusterStateVersion != null) {
-            return new ZooKeeperClusterStateVersionOverride(clusterStateVersion, defaultSettings(), zooKeeperEnvironment(),
-                    zk,
-                    provider
-            );
-        } else {
-            return new ZooKeeperClusterState(defaultSettings(),
-                    zooKeeperEnvironment(),
-                    zk,
-                    provider
-            );
-        }
     }
 
     @Test
@@ -110,35 +81,6 @@ public class ZooKeeperClusterStateTests extends AbstractZooKeeperTests {
 
     }
 
-    private ClusterState testClusterState(RoutingTable routingTable, DiscoveryNodes nodes) {
-        return ClusterState.newClusterStateBuilder()
-                .version(1234L)
-                .routingTable(routingTable)
-                .nodes(nodes)
-                .build();
-    }
-
-    private DiscoveryNodes testDiscoveryNodes() {
-        return DiscoveryNodes.newNodesBuilder()
-                .masterNodeId("localnodeid")
-                .build();
-    }
-
-    private RoutingTable testRoutingTable() {
-        RoutingTable.Builder routingTableBuilder = RoutingTable.builder();
-        for (int i = 0; i < 1000; i++) {
-            IndexRoutingTable.Builder indexRoutingTableBuilder = new IndexRoutingTable.Builder("index");
-            for (int j = 0; j < 100; j++) {
-                ShardRouting shardRouting = new ImmutableShardRouting("index", j, "i" + i + "s" + j, true, ShardRoutingState.STARTED, 0L);
-                indexRoutingTableBuilder.addShard(shardRouting, true);
-            }
-            routingTableBuilder.add(indexRoutingTableBuilder);
-        }
-
-        return routingTableBuilder
-                .build();
-    }
-
     @Test
     public void testClusterStatePublishingWithNewVersion() throws Exception {
         RoutingTable routingTable = testRoutingTable();
@@ -171,27 +113,11 @@ public class ZooKeeperClusterStateTests extends AbstractZooKeeperTests {
 
         zkStateNew.syncClusterState();
 
-        // Make sure that old state was deleted
-        assertThat(zk.getNode(zooKeeperEnvironment().statePartsNodePath(), null), nullValue());
+        // Make sure that new start can be published now
+        zkStateNew.publish(initialState);
 
         zkStateNew.stop();
 
     }
 
-    private class ZooKeeperClusterStateVersionOverride extends ZooKeeperClusterState {
-
-        private final String clusterStateVersion;
-
-        public ZooKeeperClusterStateVersionOverride(String clusterStateVersion, Settings settings,
-                                                    ZooKeeperEnvironment environment, ZooKeeperClient zooKeeperClient,
-                                                    DiscoveryNodesProvider nodesProvider) {
-            super(settings, environment, zooKeeperClient, nodesProvider);
-            this.clusterStateVersion = clusterStateVersion;
-        }
-
-        @Override
-        protected String clusterStateVersion() {
-            return clusterStateVersion;
-        }
-    }
 }

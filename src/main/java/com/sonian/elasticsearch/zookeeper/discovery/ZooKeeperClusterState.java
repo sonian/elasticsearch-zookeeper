@@ -37,6 +37,7 @@ import org.elasticsearch.discovery.zen.DiscoveryNodesProvider;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -183,7 +184,13 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
     }
 
     private void cleanClusterStateNode() throws ElasticSearchException, InterruptedException {
-        zooKeeperClient.deleteNodeRecursively(environment.stateNodePath());
+        Set<String> parts = zooKeeperClient.listNodes(environment.stateNodePath(), null);
+        for (String part : parts) {
+            // Don't delete the part node itself. Other nodes might already have watchers set on this node
+            if (!"parts".equals(part)) {
+                 zooKeeperClient.deleteNodeRecursively(environment.stateNodePath() + "/" + part);
+            }
+        }
     }
 
     private void updateClusterState(NewClusterStateListener newClusterStateListener) {
