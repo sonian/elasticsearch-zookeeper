@@ -32,6 +32,7 @@ import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClient;
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClientService;
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperEnvironment;
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperFactory;
+import org.elasticsearch.node.service.NodeService;
 import org.testng.annotations.*;
 
 import java.io.File;
@@ -74,7 +75,9 @@ public abstract class AbstractZooKeeperTests {
         Environment tempEnvironment = new Environment(defaultSettings);
         File zooKeeperDataDirectory = new File(tempEnvironment.dataFiles()[0], "zookeeper");
         logger.info("Deleting zookeeper directory {}", zooKeeperDataDirectory);
-        deleteDirectory(zooKeeperDataDirectory);
+        if(deleteDirectory(zooKeeperDataDirectory)) {
+            logger.info("Zookeeper directory {} was deleted", zooKeeperDataDirectory);
+        }
         embeddedZooKeeperService = new EmbeddedZooKeeperService(defaultSettings, tempEnvironment);
         embeddedZooKeeperService.start();
         putDefaultSettings(ImmutableSettings.settingsBuilder()
@@ -191,6 +194,11 @@ public abstract class AbstractZooKeeperTests {
             @Override
             public DiscoveryNodes nodes() {
                 return nodes;
+            }
+
+            @Override
+            public NodeService nodeService() {
+                return null;
             }
         };
         ZooKeeperClient zk = buildZooKeeper(defaultSettings());

@@ -18,14 +18,12 @@
 package com.sonian.elasticsearch.zookeeper.settings;
 
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClientService;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.ZooKeeper;
 import org.elasticsearch.ElasticSearchException;
 import org.elasticsearch.cluster.ClusterName;
 import org.elasticsearch.common.Classes;
 import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
-import org.elasticsearch.common.io.Files;
+import org.elasticsearch.common.io.Streams;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.logging.log4j.LogConfigurator;
 import org.elasticsearch.common.settings.ImmutableSettings;
@@ -225,7 +223,7 @@ public final class ZooKeeperSettingsManager extends AbstractLifecycleComponent<Z
     private static byte[] loadSettingsFile(String path) {
         File file = new File(path);
         try {
-            return Files.toByteArray(file);
+            return Streams.copyToByteArray(file);
         } catch (IOException ex) {
             throw new ElasticSearchException("Cannot load settings file " + path, ex);
         }

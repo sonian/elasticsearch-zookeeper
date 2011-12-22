@@ -31,6 +31,7 @@ import org.elasticsearch.cluster.routing.RoutingTable;
 import org.elasticsearch.common.UUID;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
 import org.elasticsearch.common.inject.Inject;
+import org.elasticsearch.common.inject.internal.Nullable;
 import org.elasticsearch.common.io.stream.BytesStreamInput;
 import org.elasticsearch.common.io.stream.BytesStreamOutput;
 import org.elasticsearch.common.settings.Settings;
@@ -38,6 +39,7 @@ import org.elasticsearch.discovery.Discovery;
 import org.elasticsearch.discovery.InitialStateDiscoveryListener;
 import org.elasticsearch.discovery.zen.DiscoveryNodesProvider;
 import org.elasticsearch.discovery.zen.publish.PublishClusterStateAction;
+import org.elasticsearch.node.service.NodeService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 import com.sonian.elasticsearch.zookeeper.client.AbstractNodeListener;
@@ -92,6 +94,9 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
     private final DiscoveryNodeService discoveryNodeService;
 
     private final ZooKeeperEnvironment environment;
+
+    @Nullable
+    private NodeService nodeService;
 
 
     @Inject public ZooKeeperDiscovery(Settings settings, ZooKeeperEnvironment environment, ClusterName clusterName, ThreadPool threadPool,
@@ -171,6 +176,11 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         return clusterName.value() + "/" + localNode.id();
     }
 
+    @Override
+    public void setNodeService(@Nullable NodeService nodeService) {
+        this.nodeService = nodeService;
+    }
+
 
     @Override public void publish(ClusterState clusterState) {
         if (!master) {
@@ -196,6 +206,11 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         }
         // have not decided yet, just send the local node
         return newNodesBuilder().put(localNode).localNodeId(localNode.id()).build();
+    }
+
+    @Override
+    public NodeService nodeService() {
+        return nodeService;
     }
 
     private void asyncJoinCluster(final boolean initial) {
