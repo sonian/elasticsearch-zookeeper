@@ -500,7 +500,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         try {
             byte[] buf = zooKeeperClient.getNode(nodePath(id), null);
             if (buf != null) {
-                return DiscoveryNode.readNode(new BytesStreamInput(buf));
+                return DiscoveryNode.readNode(new BytesStreamInput(buf, false));
             } else {
                 return null;
             }

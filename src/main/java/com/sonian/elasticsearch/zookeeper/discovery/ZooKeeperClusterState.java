@@ -143,7 +143,7 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
             if (stateBuf == null) {
                 return null;
             }
-            final BytesStreamInput buf = new BytesStreamInput(stateBuf);
+            final BytesStreamInput buf = new BytesStreamInput(stateBuf, false);
             String clusterStateVersion = buf.readUTF();
             if (!clusterStateVersion().equals(clusterStateVersion)) {
                 throw new ZooKeeperIncompatibleStateVersionException("Expected: " + clusterStateVersion() + ", actual: " + clusterStateVersion);
@@ -410,7 +410,7 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
 
                 byte[] buf = zooKeeperClient.getLargeNode(path);
                 if (buf != null) {
-                    return readFrom(new BytesStreamInput(buf));
+                    return readFrom(new BytesStreamInput(buf, false));
                 } else {
                     return null;
                 }
