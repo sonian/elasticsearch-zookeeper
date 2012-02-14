@@ -364,7 +364,49 @@ public class ZooKeeperDiscoveryTests extends AbstractZooKeeperTests {
             }
         });
         expireSession("node1");
-        assertThat(nodeMonitor.await(5, TimeUnit.SECONDS).nodes().masterNode().name(), equalTo("node2"));
+        ClusterState nodeState = nodeMonitor.await(5, TimeUnit.SECONDS);
+        assertThat(nodeState.nodes().masterNode().name(), equalTo("node2"));
+        assertThat(nodeState.nodes().size(), equalTo(2));
+    }
+
+    @Test public void testNonMasterSessionExpiration() throws Exception {
+        buildNode("node1");
+        buildNode("node2");
+
+        // Ensure node1 is master
+        ClusterStateMonitor nodeMonitor = new ClusterStateMonitor("node1");
+        node("node1").start();
+        assertThat(nodeMonitor.await().nodes().masterNode().name(), equalTo("node1"));
+
+        // Wait for the second node to start
+        nodeMonitor = new ClusterStateMonitor("node2");
+        node("node2").start();
+        assertThat(nodeMonitor.await().nodes().masterNode().name(), equalTo("node1"));
+
+        // Kill the session for the second node and wait for the first node detect node disappearance
+        nodeMonitor = new ClusterStateMonitor("node1", new ClusterStateCondition() {
+            @Override public boolean check(ClusterChangedEvent event) {
+                return event.state().nodes().size() == 1;
+            }
+        });
+        // Kill the session for the second node and wait for the second node to reconnect
+        ClusterStateMonitor nodeMonitor2 = new ClusterStateMonitor("node2", new ClusterStateCondition() {
+            @Override public boolean check(ClusterChangedEvent event) {
+                return event.state().nodes().size() == 2;
+            }
+        });
+        logger.info("Terminating node2 zk sessions");
+        expireSession("node2");
+        logger.info("node2 zk sessions terminated, waiting for the node1 to acknowledge loss of node2");
+
+        ClusterState nodeState = nodeMonitor.await(5, TimeUnit.SECONDS);
+        assertThat(nodeState.nodes().masterNode().name(), equalTo("node1"));
+        assertThat(nodeState.nodes().size(), equalTo(1));
+
+        logger.info("waiting for node2 to reconnect");
+        nodeState = nodeMonitor2.await(5, TimeUnit.SECONDS);
+        assertThat(nodeState.nodes().masterNode().name(), equalTo("node1"));
+        assertThat(nodeState.nodes().size(), equalTo(2));
     }
 
 
