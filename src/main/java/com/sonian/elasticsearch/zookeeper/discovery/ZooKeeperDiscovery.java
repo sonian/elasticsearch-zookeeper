@@ -378,6 +378,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         if (!lifecycle.started()) {
             return;
         }
+        logger.trace("Restarting ZK Discovery");
         master = false;
         asyncJoinCluster(true);
     }
