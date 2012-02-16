@@ -330,6 +330,10 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
                 if (masterNode != null) {
                     builder = builder.remove(masterNode.id());
                 }
+                // Make sure that local node is present
+                if (currentState.nodes().localNode() == null) {
+                    builder.put(localNode).localNodeId(localNode.id());
+                }
                 latestDiscoNodes = builder.build();
                 return newClusterStateBuilder().state(currentState)
                         .blocks(clusterBlocks)
