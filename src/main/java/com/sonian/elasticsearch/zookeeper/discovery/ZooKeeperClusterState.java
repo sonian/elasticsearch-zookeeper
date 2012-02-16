@@ -84,7 +84,9 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
     public void publish(ClusterState state) throws ElasticSearchException, InterruptedException {
         publishingLock.lock();
         try {
-            logger.trace("Publishing new cluster state");
+            logger.trace("Publishing new cluster state version [{}]", state.version());
+            // Make sure state node exists
+            zooKeeperClient.createPersistentNode(environment.stateNodePath());
             final String statePath = environment.statePartsNodePath();
             final BytesStreamOutput buf = new BytesStreamOutput();
             buf.writeUTF(clusterStateVersion());
@@ -208,11 +210,6 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
 
     @Override
     protected void doStart() throws ElasticSearchException {
-        try {
-            zooKeeperClient.createPersistentNode(environment.stateNodePath());
-        } catch (InterruptedException ex) {
-            // Ignore
-        }
     }
 
     @Override
@@ -400,7 +397,12 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
 
         public void purge() throws ElasticSearchException, InterruptedException {
             if (previousPath != null) {
-                zooKeeperClient.deleteLargeNode(previousPath);
+                try {
+                    zooKeeperClient.deleteLargeNode(previousPath);
+                } catch (ZooKeeperClientException ex) {
+                    // It's possible that ZooKeeper lost all data - ignore this error
+                    logger.trace("Error deleting node");
+                }
                 previousPath = null;
             }
         }
