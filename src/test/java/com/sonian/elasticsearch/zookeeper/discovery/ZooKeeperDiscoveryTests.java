@@ -415,7 +415,7 @@ public class ZooKeeperDiscoveryTests extends AbstractZooKeeperTests {
         buildNode("node2");
         buildNode("node3");
         buildNode("node4", ImmutableSettings.settingsBuilder()
-//                .put("node.master", false)
+                .put("node.master", false)
         );
 
         // Ensure node1 is master
