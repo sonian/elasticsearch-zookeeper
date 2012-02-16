@@ -32,6 +32,7 @@ import org.elasticsearch.cluster.routing.RoutingTable;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.indices.IndexMissingException;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.internal.InternalNode;
 import org.testng.annotations.AfterMethod;
@@ -409,6 +410,87 @@ public class ZooKeeperDiscoveryTests extends AbstractZooKeeperTests {
         assertThat(nodeState.nodes().size(), equalTo(2));
     }
 
+    @Test public void testZooKeeperRestart() throws Exception {
+        buildNode("node1");
+        buildNode("node2");
+        buildNode("node3");
+        buildNode("node4", ImmutableSettings.settingsBuilder()
+//                .put("node.master", false)
+        );
+
+        // Ensure node1 is master
+        ClusterStateMonitor nodeMonitor = new ClusterStateMonitor("node1");
+        node("node1").start();
+        assertThat(nodeMonitor.await().nodes().masterNode().name(), equalTo("node1"));
+
+        // Wait for the second node to start
+        nodeMonitor = new ClusterStateMonitor("node2");
+        node("node2").start();
+        assertThat(nodeMonitor.await().nodes().masterNode().name(), equalTo("node1"));
+
+        // Wait for the third node to start
+        nodeMonitor = new ClusterStateMonitor("node3");
+        node("node3").start();
+        assertThat(nodeMonitor.await().nodes().masterNode().name(), equalTo("node1"));
+
+
+        // Delete index if it still exists
+        try {
+            node("node1").client().admin().indices().prepareDelete("test").execute().actionGet();
+        } catch (Exception e) {
+            // ignore
+        }
+        try {
+            node("node1").client().admin().indices().prepareDelete("test2").execute().actionGet();
+        } catch (Exception e) {
+            // ignore
+        }
+
+        client("node1").admin().cluster().prepareHealth().setWaitForGreenStatus().execute().actionGet();
+
+        logger.info("Creating index test");
+        client("node1").admin().indices().prepareCreate("test").execute().actionGet();
+
+        client("node1").admin().cluster().prepareHealth().setWaitForGreenStatus().execute().actionGet();
+        client("node2").admin().cluster().prepareHealth().setWaitForGreenStatus().execute().actionGet();
+        client("node3").admin().cluster().prepareHealth().setWaitForGreenStatus().execute().actionGet();
+
+        restartZooKeeper();
+
+        // Make sure all nodes knows about the index
+        logger.info("Checking that all nodes still know about index test");
+        assertThat(count("node1", "test"), equalTo(0L));
+        assertThat(count("node2", "test"), equalTo(0L));
+        assertThat(count("node3", "test"), equalTo(0L));
+
+        assertThat(client("node1").admin().cluster().prepareHealth().setWaitForNodes("3").execute().actionGet().getNumberOfNodes(), equalTo(3));
+        assertThat(client("node2").admin().cluster().prepareHealth().setWaitForNodes("3").execute().actionGet().getNumberOfNodes(), equalTo(3));
+        assertThat(client("node3").admin().cluster().prepareHealth().setWaitForNodes("3").execute().actionGet().getNumberOfNodes(), equalTo(3));
+
+        String master1 = client("node1").admin().cluster().prepareState().execute().actionGet().state().nodes().masterNode().name();
+        String master2 = client("node2").admin().cluster().prepareState().execute().actionGet().state().nodes().masterNode().name();
+        String master3 = client("node3").admin().cluster().prepareState().execute().actionGet().state().nodes().masterNode().name();
+        assertThat(master1, equalTo(master2));
+        assertThat(master1, equalTo(master3));
+
+        // Wait for the forth node to start
+        node("node4").start();
+        logger.info("Creating index test2");
+        client("node4").admin().indices().prepareCreate("test2").execute().actionGet();
+        client("node4").admin().cluster().prepareHealth().setWaitForGreenStatus().execute().actionGet();
+
+        // Make sure all nodes know about 4th node
+        assertThat(client("node1").admin().cluster().prepareHealth().setWaitForNodes("4").execute().actionGet().getNumberOfNodes(), equalTo(4));
+        assertThat(client("node2").admin().cluster().prepareHealth().setWaitForNodes("4").execute().actionGet().getNumberOfNodes(), equalTo(4));
+        assertThat(client("node3").admin().cluster().prepareHealth().setWaitForNodes("4").execute().actionGet().getNumberOfNodes(), equalTo(4));
+        assertThat(client("node4").admin().cluster().prepareHealth().setWaitForNodes("4").execute().actionGet().getNumberOfNodes(), equalTo(4));
+
+        // Make sure all nodes knows about the new index
+        assertThat(count("node1", "test2"), equalTo(0L));
+        assertThat(count("node2", "test2"), equalTo(0L));
+        assertThat(count("node3", "test2"), equalTo(0L));
+        assertThat(count("node4", "test2"), equalTo(0L));
+    }
 
     // TODO: need a faster test
     @Test(enabled = false) public void testIndexingWithNodeFailures() throws Exception {

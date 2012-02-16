@@ -71,10 +71,18 @@ public abstract class AbstractZooKeeperTests {
 
 
     @BeforeClass public void startZooKeeper() throws IOException, InterruptedException {
+        startZooKeeper(true);
+    }
+
+    public void startZooKeeper(boolean cleanDirectory) throws IOException, InterruptedException {
         Environment tempEnvironment = new Environment(defaultSettings);
-        File zooKeeperDataDirectory = new File(tempEnvironment.dataFiles()[0], "zookeeper");
-        logger.info("Deleting zookeeper directory {}", zooKeeperDataDirectory);
-        deleteDirectory(zooKeeperDataDirectory);
+        if (cleanDirectory) {
+            File zooKeeperDataDirectory = new File(tempEnvironment.dataFiles()[0], "zookeeper");
+            logger.info("Deleting zookeeper directory {}", zooKeeperDataDirectory);
+            if(deleteDirectory(zooKeeperDataDirectory)) {
+                logger.info("Zookeeper directory {} was deleted", zooKeeperDataDirectory);
+            }
+        }
         embeddedZooKeeperService = new EmbeddedZooKeeperService(defaultSettings, tempEnvironment);
         embeddedZooKeeperService.start();
         putDefaultSettings(ImmutableSettings.settingsBuilder()
@@ -91,6 +99,13 @@ public abstract class AbstractZooKeeperTests {
             embeddedZooKeeperService.close();
             embeddedZooKeeperService = null;
         }
+    }
+
+    public void restartZooKeeper() throws IOException, InterruptedException {
+        logger.info("*** ZOOKEEPER RESTART ***");
+        stopZooKeeper();
+        Thread.sleep(1000);
+        startZooKeeper(false);
     }
 
     @AfterMethod public void stopZooKeeperClients() {

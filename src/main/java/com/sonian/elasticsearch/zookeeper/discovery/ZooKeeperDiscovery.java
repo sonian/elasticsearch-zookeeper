@@ -20,7 +20,6 @@ import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClient;
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClientSessionExpiredException;
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperEnvironment;
 import org.elasticsearch.ElasticSearchException;
-import org.elasticsearch.ElasticSearchIllegalStateException;
 import org.elasticsearch.cluster.*;
 import org.elasticsearch.cluster.block.ClusterBlocks;
 import org.elasticsearch.cluster.metadata.MetaData;
@@ -121,17 +120,22 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         initialStateSent.set(false);
         zooKeeperClient.start();
         zooKeeperClient.addSessionResetListener(sessionResetListener);
-        try {
-            zooKeeperClient.createPersistentNode(environment.clusterNodePath());
-            zooKeeperClient.createPersistentNode(environment.nodesNodePath());
-        } catch (InterruptedException ex) {
-            // Ignore
-        }
+        createRootNodes();
 
         statePublisher.start();
 
         // do the join on a different thread, the DiscoveryService waits for 30s anyhow till it is discovered
         asyncJoinCluster(true);
+    }
+
+    private void createRootNodes() {
+        try {
+            logger.trace("Creating root nodes in ZooKeeper");
+            zooKeeperClient.createPersistentNode(environment.clusterNodePath());
+            zooKeeperClient.createPersistentNode(environment.nodesNodePath());
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Override protected void doStop() throws ElasticSearchException {
@@ -174,12 +178,18 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
 
     @Override public void publish(ClusterState clusterState) {
         if (!master) {
-            throw new ElasticSearchIllegalStateException("Shouldn't publish state when not master");
+            logger.warn("Shouldn't publish state when not master");
         }
         if (!lifecycle.started()) {
             return;
         }
         try {
+            // Make sure we are still master
+            byte[] masterNode = zooKeeperClient.getNode(environment.masterNodePath(), null);
+            if (masterNode == null || !new String(masterNode).equals(localNode.id())) {
+                logger.warn("No longer a master, shouldn't publish new state");
+                return;
+            }
             latestDiscoNodes = clusterState.nodes();
             statePublisher.publish(clusterState);
         } catch (ZooKeeperClientSessionExpiredException ex) {
@@ -231,6 +241,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
             return false;
         }
         try {
+            logger.trace("Registering in ZooKeeper");
             // Create an ephemeral node that contains our nodeInfo
             BytesStreamOutput streamOutput = new BytesStreamOutput();
             localNode.writeTo(streamOutput);
@@ -267,10 +278,11 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         }
     }
 
-    private void electMaster() {
+    private void electMaster() throws InterruptedException {
         if (lifecycle.stoppedOrClosed()) {
             return;
         }
+        logger.trace("Electing master");
         ZooKeeperClient.NodeListener nodeListener = new AbstractNodeListener() {
             @Override public void onNodeDeleted(String id) {
                 handleMasterGone();
@@ -296,6 +308,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
     }
 
     private void addMaster(String masterNodeId) throws InterruptedException {
+        logger.trace("Found master: {}", masterNodeId);
         master = false;
         statePublisher.addMaster(masterNodeId);
     }
@@ -333,6 +346,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
     }
 
     private void becomeMaster() throws InterruptedException {
+        logger.trace("Elected as master ({})", localNode.id());
         this.master = true;
         statePublisher.becomeMaster();
         clusterService.submitStateUpdateTask("zen-disco-join (elected_as_master)", new ProcessedClusterStateUpdateTask() {
@@ -364,49 +378,57 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
             return;
         }
         logger.trace("Restarting ZK Discovery");
+        createRootNodes();
         master = false;
         asyncJoinCluster(true);
     }
 
-    private void processDeletedNode(final String nodeId) {
-        clusterService.submitStateUpdateTask("zoo-keeper-disco-node_left(" + nodeId + ")", new ClusterStateUpdateTask() {
-            @Override public ClusterState execute(ClusterState currentState) {
-                if (currentState.nodes().nodeExists(nodeId)) {
-                    DiscoveryNodes.Builder builder = new DiscoveryNodes.Builder()
-                            .putAll(currentState.nodes())
-                            .remove(nodeId);
-                    latestDiscoNodes = builder.build();
-                    return newClusterStateBuilder().state(currentState).nodes(latestDiscoNodes).build();
-                } else {
-                    logger.warn("Trying to deleted a node that doesn't exist {}", nodeId);
-                    return currentState;
+    private void updateNodeList(final Set<String> nodes) {
+        clusterService.submitStateUpdateTask("zoo-keeper-disco-update-node-list", new ClusterStateUpdateTask() {
+            @Override
+            public ClusterState execute(ClusterState currentState) {
+                try {
+                    Set<String> currentNodes = latestDiscoNodes.nodes().keySet();
+                    Set<String> deleted = new HashSet<String>(currentNodes);
+                    deleted.removeAll(nodes);
+                    Set<String> added = new HashSet<String>(nodes);
+                    added.removeAll(currentNodes);
+                    logger.trace("Current nodes: [{}], new nodes: [{}], deleted: [{}], added[{}]", currentNodes, nodes, deleted, added);
+                    if(!deleted.isEmpty() || !added.isEmpty()) {
+                        DiscoveryNodes.Builder builder = new DiscoveryNodes.Builder()
+                                .putAll(currentState.nodes());
+                        for (String nodeId : deleted) {
+                            if (currentState.nodes().nodeExists(nodeId)) {
+                                builder.remove(nodeId);
+                            } else {
+                                logger.warn("Trying to deleted a node that doesn't exist {}", nodeId);
+                                return currentState;
+                            }
+                        }
+                        for (String nodeId : added) {
+                            if (!nodeId.equals(localNode.id())) {
+                                DiscoveryNode node = nodeInfo(nodeId);
+                                if (node != null) {
+                                    if (currentState.nodes().nodeExists(node.id())) {
+                                        // the node already exists in the cluster
+                                        logger.warn("received a join request for an existing node [{}]", node);
+                                    } else {
+                                        builder.put(node);
+                                    }
+                                }
+                            }
+                        }
+                        latestDiscoNodes = builder.build();
+                        return newClusterStateBuilder().state(currentState).nodes(latestDiscoNodes).build();
+                    }
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
                 }
+                return currentState;
             }
         });
-
     }
 
-    private void processAddedNode(final DiscoveryNode node) {
-        if (!master) {
-            throw new ElasticSearchIllegalStateException("Node [" + localNode + "] not master for join request from [" + node + "]");
-        }
-
-        if (!transportService.addressSupported(node.address().getClass())) {
-            logger.warn("received a wrong address type from [{}], ignoring...", node);
-        } else {
-            clusterService.submitStateUpdateTask("zoo-keeper-disco-receive(join from node[" + node + "])", new ClusterStateUpdateTask() {
-                @Override public ClusterState execute(ClusterState currentState) {
-                    if (currentState.nodes().nodeExists(node.id())) {
-                        // the node already exists in the cluster
-                        logger.warn("received a join request for an existing node [{}]", node);
-                        // still send a new cluster state, so it will be re published and possibly update the other node
-                        return ClusterState.builder().state(currentState).build();
-                    }
-                    return newClusterStateBuilder().state(currentState).nodes(currentState.nodes().newNode(node)).build();
-                }
-            });
-        }
-    }
 
     private void sendInitialStateEventIfNeeded() {
         if (initialStateSent.compareAndSet(false, true)) {
@@ -434,7 +456,15 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
                     }
                 });
             } else {
-                logger.trace("Received new state, but not part of the state");
+                if (logger.isTraceEnabled()) {
+                    StringBuilder sb = new StringBuilder("Received new state, but not part of the state:\nversion [").append(clusterState.version()).append("]\n");
+                    sb.append(clusterState.nodes().prettyPrint());
+                    sb.append(clusterState.routingTable().prettyPrint());
+                    sb.append(clusterState.readOnlyRoutingNodes().prettyPrint());
+                    logger.trace(sb.toString());
+                } else if (logger.isDebugEnabled()) {
+                    logger.debug("Received new state, but not part of the state");
+                }
             }
         } else {
             logger.warn("Received new state, but node is master");
@@ -452,23 +482,8 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         boolean restart = false;
         updateNodeListLock.lock();
         try {
-            Set<String> currentNodes = latestDiscoNodes.nodes().keySet();
             Set<String> nodes = zooKeeperClient.listNodes(environment.nodesNodePath(), masterNodeListChangedListener);
-            Set<String> deleted = new HashSet<String>(currentNodes);
-            deleted.removeAll(nodes);
-            Set<String> added = new HashSet<String>(nodes);
-            added.removeAll(currentNodes);
-            for (String nodeId : deleted) {
-                processDeletedNode(nodeId);
-            }
-            for (String nodeId : added) {
-                if (!nodeId.equals(localNode.id())) {
-                    DiscoveryNode node = nodeInfo(nodeId);
-                    if (node != null) {
-                        processAddedNode(node);
-                    }
-                }
-            }
+            updateNodeList(nodes);
         } catch (ZooKeeperClientSessionExpiredException ex) {
             restart = true;
         } catch (Exception ex) {
