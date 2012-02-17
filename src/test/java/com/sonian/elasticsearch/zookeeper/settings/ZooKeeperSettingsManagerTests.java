@@ -21,7 +21,8 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooKeeper;
 import org.elasticsearch.common.settings.Settings;
-import com.sonian.elasticsearch.zookeeper.discovery.AbstractZooKeeperTests;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import static org.hamcrest.MatcherAssert.*;
@@ -32,6 +33,17 @@ import static org.hamcrest.Matchers.*;
  * @author imotov
  */
 public class ZooKeeperSettingsManagerTests extends AbstractZooKeeperTests {
+
+    @BeforeClass
+    public void createTestPaths() throws Exception {
+        startZooKeeper();
+    }
+
+    @AfterClass
+    public void shutdownZooKeeper() {
+        stopZooKeeper();
+    }
+
 
     @Test public void testSettingsLoading() throws Exception {
         putSettings("# Global\n"

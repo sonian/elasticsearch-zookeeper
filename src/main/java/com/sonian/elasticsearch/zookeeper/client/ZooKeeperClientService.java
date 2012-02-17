@@ -33,6 +33,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -458,6 +461,25 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
     @Override
     public void removeSessionResetListener(SessionResetListener sessionResetListener) {
         sessionResetListeners.remove(sessionResetListener);
+    }
+
+    @Override
+    public boolean verifyConnection(long timeout, TimeUnit unit) throws InterruptedException {
+        if (connected()) {
+            final AtomicBoolean stats = new AtomicBoolean(false);
+            final CountDownLatch latch = new CountDownLatch(1);
+            zooKeeper.exists("/", null, new AsyncCallback.StatCallback() {
+                @Override
+                public void processResult(int rc, String path, Object ctx, Stat stat) {
+                    stats.set(stat != null);
+                    latch.countDown();
+                }
+            }, null);
+            latch.await(timeout, unit);
+            return stats.get();
+        } else {
+            return false;
+        }
     }
 
     @Override

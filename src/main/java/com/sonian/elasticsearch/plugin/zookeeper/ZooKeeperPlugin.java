@@ -17,9 +17,11 @@
 
 package com.sonian.elasticsearch.plugin.zookeeper;
 
+import com.sonian.elasticsearch.rest.zookeeper.RestZooKeeperStatusAction;
 import com.sonian.elasticsearch.zookeeper.settings.ZooKeeperSettingsManager;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.plugins.AbstractPlugin;
+import org.elasticsearch.rest.RestModule;
 
 /**
  * @author imotov
@@ -46,5 +48,9 @@ public class ZooKeeperPlugin extends AbstractPlugin {
         } else {
             return super.additionalSettings();
         }
+    }
+
+    public void onModule(RestModule restModule) {
+        restModule.addRestAction(RestZooKeeperStatusAction.class);
     }
 }

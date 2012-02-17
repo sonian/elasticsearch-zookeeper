@@ -20,7 +20,6 @@ import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClient;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthStatus;
 import org.elasticsearch.action.count.CountResponse;
-import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.ClusterChangedEvent;
 import org.elasticsearch.cluster.ClusterService;
 import org.elasticsearch.cluster.ClusterState;
@@ -30,27 +29,19 @@ import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.routing.RoutingTable;
 import org.elasticsearch.common.settings.ImmutableSettings;
-import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.indices.IndexMissingException;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.internal.InternalNode;
-import org.testng.annotations.AfterMethod;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.util.Date;
-import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.elasticsearch.common.collect.Maps.*;
-import static org.elasticsearch.common.settings.ImmutableSettings.Builder.*;
-import static org.elasticsearch.common.settings.ImmutableSettings.*;
 import static org.elasticsearch.common.xcontent.XContentFactory.*;
-import static org.elasticsearch.node.NodeBuilder.*;
 import static org.hamcrest.MatcherAssert.*;
 import static org.hamcrest.Matchers.*;
 
@@ -58,76 +49,18 @@ import static org.hamcrest.Matchers.*;
 /**
  * @author imotov
  */
-public class ZooKeeperDiscoveryTests extends AbstractZooKeeperTests {
+public class ZooKeeperDiscoveryTests extends AbstractZooKeeperNodeTests {
 
-    protected Random rand = new Random();
-
-    private Map<String, Node> nodes = newHashMap();
-
-    private Map<String, Client> clients = newHashMap();
-
-    public Node buildNode(String id) {
-        return buildNode(id, EMPTY_SETTINGS);
+    @BeforeClass
+    public void createTestPaths() throws Exception {
+        startZooKeeper();
     }
 
-    public Node buildNode(String id, Settings.Builder settings) {
-        return buildNode(id, settings.build());
+    @AfterClass
+    public void shutdownZooKeeper() {
+        stopZooKeeper();
     }
 
-    public Node buildNode(String id, Settings settings) {
-        String settingsSource = getClass().getName().replace('.', '/') + ".yml";
-        Settings finalSettings = settingsBuilder()
-                .loadFromClasspath(settingsSource)
-                .put(defaultSettings())
-                .put(settings)
-                .put("name", id)
-                .build();
-
-        if (finalSettings.get("gateway.type") == null) {
-            // default to non gateway
-            finalSettings = settingsBuilder().put(finalSettings).put("gateway.type", "none").build();
-        }
-
-        Node node = nodeBuilder()
-                .settings(finalSettings)
-                .build();
-        nodes.put(id, node);
-        clients.put(id, node.client());
-        return node;
-    }
-
-    public Node node(String id) {
-        return nodes.get(id);
-    }
-
-    public Client client(String id) {
-        return clients.get(id);
-    }
-
-    public void closeAllNodes() {
-        for (Client client : clients.values()) {
-            client.close();
-        }
-        clients.clear();
-        for (Node node : nodes.values()) {
-            node.close();
-        }
-        nodes.clear();
-    }
-
-    @BeforeClass public void addDefaultSettings() {
-        putDefaultSettings(ImmutableSettings.settingsBuilder()
-                .put(defaultSettings())
-                .put("sonian.elasticsearch.zookeeper.discovery.state_publishing.enabled", true)
-                .put("discovery.type", ZooKeeperDiscoveryModule.class.getName())
-                .put("transport.type", "local")
-        );
-
-    }
-
-    @AfterMethod public void nodesCleanup() {
-        closeAllNodes();
-    }
 
     @Test public void testSingleNodeStartup() throws Exception {
         Node node = buildNode("node1");
@@ -608,6 +541,7 @@ public class ZooKeeperDiscoveryTests extends AbstractZooKeeperTests {
         assertThat(nodeExists("node3", state), equalTo(true));
 
     }
+
 
     private long count(String id, String index) throws InterruptedException {
 
