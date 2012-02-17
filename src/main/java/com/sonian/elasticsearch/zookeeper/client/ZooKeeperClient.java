@@ -20,6 +20,7 @@ package com.sonian.elasticsearch.zookeeper.client;
 import org.elasticsearch.common.component.LifecycleComponent;
 
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author imotov
@@ -54,6 +55,8 @@ public interface ZooKeeperClient extends LifecycleComponent<ZooKeeperClient> {
     void addSessionResetListener(SessionResetListener sessionResetListener);
 
     void removeSessionResetListener(SessionResetListener sessionResetListener);
+
+    boolean verifyConnection(long timeout, TimeUnit unit) throws InterruptedException ;
 
     boolean connected();
 
