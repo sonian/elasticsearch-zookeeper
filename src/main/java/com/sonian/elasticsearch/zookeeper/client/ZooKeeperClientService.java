@@ -41,13 +41,15 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeperClient> implements ZooKeeperClient {
 
-    private ZooKeeper zooKeeper;
+    private volatile ZooKeeper zooKeeper;
 
     private final ZooKeeperEnvironment environment;
 
     private final ZooKeeperFactory zooKeeperFactory;
 
     private static final int MAX_NODE_SIZE = 1024 * 1024;
+
+    private static final long CONNECTION_LOSS_RETRY_WAIT = 1000;
 
     private final int maxNodeSize;
 
@@ -69,8 +71,31 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
             zooKeeper = zooKeeperFactory.newZooKeeper();
             createPersistentNode(environment.rootNodePath());
             createPersistentNode(environment.clustersNodePath());
+            registerSessionResetListener();
         } catch (InterruptedException e) {
             throw new ZooKeeperClientException("Cannot start ZooKeeper client", e);
+        }
+    }
+
+    private void registerSessionResetListener() throws ZooKeeperClientException, InterruptedException {
+        String testNode = "/";
+        final Watcher watcher = new Watcher() {
+            @Override
+            public void process(WatchedEvent event) {
+                if (event.getState() == Event.KeeperState.Disconnected) {
+                    resetSession();
+                }
+            }
+        };
+        try {
+            zooKeeper.exists(testNode, watcher);
+        } catch (KeeperException e) {
+            throw new ZooKeeperClientException("Error registering session reset listener", e);
+        } catch (InterruptedException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.warn("Unknown Exception", e);
+            throw new ZooKeeperClientException("Error registering session reset listener", e);
         }
     }
 
@@ -78,6 +103,7 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
     protected void doStop() throws ElasticSearchException {
         if (zooKeeper != null) {
             try {
+                logger.debug("Closing zooKeeper");
                 zooKeeper.close();
             } catch (InterruptedException e) {
                 // Ignore
@@ -106,6 +132,7 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
                         if (zooKeeper.exists(currentPath, null) == null) {
                             try {
                                 zooKeeper.create(currentPath, new byte[0], ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+                                logger.trace("Created node {}", currentPath);
                             } catch (KeeperException.NodeExistsException e) {
                                 // Ignore - node was created between our check and attempt to create it
                             }
@@ -435,7 +462,7 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
 
     @Override
     public boolean connected() {
-        return zooKeeper != null && zooKeeper.getState().isAlive();
+        return zooKeeper != null && zooKeeper.getState() == ZooKeeper.States.CONNECTED;
     }
 
     @Override
@@ -447,39 +474,53 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
     }
 
     private void resetSession() {
-        sessionRestartLock.lock();
-        try {
-            if (lifecycle.started()) {
-                if (!connected()) {
-                    logger.info("Restarting ZooKeeper discovery");
+        if (lifecycle.started()) {
+            zooKeeper.sync("/", new AsyncCallback.VoidCallback() {
+                @Override
+                public void processResult(int i, String s, Object o) {
+                    sessionRestartLock.lock();
                     try {
-                        logger.trace("Stopping ZooKeeper");
-                        doStop();
-                    } catch (Exception ex) {
-                        logger.error("Error stopping ZooKeeper", ex);
-                    }
-                    while (lifecycle.started()) {
-                        try {
-                            logger.trace("Starting ZooKeeper");
-                            doStart();
-                            logger.trace("Started ZooKeeper");
-                            notifySessionReset();
-                            return;
-                        } catch (ZooKeeperClientException ex) {
-                            if (ex.getCause() != null && ex.getCause() instanceof InterruptedException) {
-                                logger.info("ZooKeeper startup was interrupted", ex);
-                                return;
+                        logger.trace("Checking if ZooKeeper session should be restarted");
+                        if (lifecycle.started()) {
+                            if (!connected()) {
+                                logger.info("Restarting ZooKeeper discovery");
+                                try {
+                                    logger.trace("Stopping ZooKeeper");
+                                    doStop();
+                                } catch (Exception ex) {
+                                    logger.error("Error stopping ZooKeeper", ex);
+                                }
+                                while (lifecycle.started()) {
+                                    try {
+                                        logger.trace("Starting ZooKeeper");
+                                        doStart();
+                                        logger.trace("Started ZooKeeper");
+                                        notifySessionReset();
+                                        return;
+                                    } catch (ZooKeeperClientException ex) {
+                                        if (ex.getCause() != null && ex.getCause() instanceof InterruptedException) {
+                                            logger.info("ZooKeeper startup was interrupted", ex);
+                                            Thread.currentThread().interrupt();
+                                            return;
+                                        }
+                                        logger.warn("Error starting ZooKeeper ", ex);
+                                    }
+                                    try {
+                                        Thread.sleep(1000);
+                                    } catch (InterruptedException ex) {
+                                        return;
+                                    }
+                                }
+                            } else {
+                                logger.trace("ZooKeeper is already restarted. Ignoring");
                             }
-                            logger.warn("Error starting ZooKeeper ", ex);
                         }
+                    } finally {
+                        sessionRestartLock.unlock();
                     }
-                } else {
-                    logger.trace("ZooKeeper is already restarted. Ignoring");
                 }
-
             }
-        } finally {
-            sessionRestartLock.unlock();
+                    , null);
         }
 
     }
@@ -491,12 +532,18 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
     }
 
     private <T> T zooKeeperCall(String reason, Callable<T> callable) throws InterruptedException, KeeperException {
+        boolean connectionLossReported = false;
         while (true) {
             try {
                 return callable.call();
             } catch (KeeperException.ConnectionLossException ex) {
-                // Retry
+                if (!connectionLossReported) {
+                    logger.debug("Connection Loss Exception");
+                    connectionLossReported =  true;
+                }
+                Thread.sleep(CONNECTION_LOSS_RETRY_WAIT);
             } catch (KeeperException.SessionExpiredException e) {
+                logger.warn("Session Expired Exception");
                 resetSession();
                 throw new ZooKeeperClientSessionExpiredException(reason, e);
             } catch (KeeperException e) {
@@ -504,6 +551,7 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
             } catch (InterruptedException e) {
                 throw e;
             } catch (Exception e) {
+                logger.warn("Unknown Exception", e);
                 throw new ZooKeeperClientException(reason, e);
             }
         }
@@ -515,7 +563,9 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
             return new Watcher() {
                 @Override
                 public void process(WatchedEvent event) {
-                    if (event.getType() == Watcher.Event.EventType.NodeCreated) {
+                    if (event.getState() == Event.KeeperState.Disconnected) {
+                        resetSession();
+                    } else if (event.getType() == Watcher.Event.EventType.NodeCreated) {
                         nodeListener.onNodeCreated(event.getPath());
                     } else if (event.getType() == Watcher.Event.EventType.NodeDeleted) {
                         nodeListener.onNodeDeleted(event.getPath());
