@@ -25,6 +25,7 @@ import org.elasticsearch.common.component.AbstractLifecycleComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.BytesStreamOutput;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.unit.TimeValue;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -464,7 +465,7 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
     }
 
     @Override
-    public boolean verifyConnection(long timeout, TimeUnit unit) throws InterruptedException {
+    public boolean verifyConnection(TimeValue timeout) throws InterruptedException {
         if (connected()) {
             final AtomicBoolean stats = new AtomicBoolean(false);
             final CountDownLatch latch = new CountDownLatch(1);
@@ -475,7 +476,7 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
                     latch.countDown();
                 }
             }, null);
-            latch.await(timeout, unit);
+            latch.await(timeout.getMillis(), TimeUnit.MILLISECONDS);
             return stats.get();
         } else {
             return false;
