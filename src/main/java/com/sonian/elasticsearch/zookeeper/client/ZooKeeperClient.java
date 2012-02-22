@@ -18,6 +18,7 @@
 package com.sonian.elasticsearch.zookeeper.client;
 
 import org.elasticsearch.common.component.LifecycleComponent;
+import org.elasticsearch.common.unit.TimeValue;
 
 import java.util.Set;
 
@@ -54,6 +55,8 @@ public interface ZooKeeperClient extends LifecycleComponent<ZooKeeperClient> {
     void addSessionResetListener(SessionResetListener sessionResetListener);
 
     void removeSessionResetListener(SessionResetListener sessionResetListener);
+
+    boolean verifyConnection(TimeValue timeout) throws InterruptedException ;
 
     boolean connected();
 

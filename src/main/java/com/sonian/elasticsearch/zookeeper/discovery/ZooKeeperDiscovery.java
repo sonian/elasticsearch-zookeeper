@@ -34,6 +34,7 @@ import org.elasticsearch.common.inject.internal.Nullable;
 import org.elasticsearch.common.io.stream.BytesStreamInput;
 import org.elasticsearch.common.io.stream.BytesStreamOutput;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.discovery.Discovery;
 import org.elasticsearch.discovery.InitialStateDiscoveryListener;
 import org.elasticsearch.discovery.zen.DiscoveryNodesProvider;
@@ -221,6 +222,10 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
     @Override
     public NodeService nodeService() {
         return nodeService;
+    }
+
+    public boolean verifyConnection(TimeValue timeout) throws InterruptedException {
+        return zooKeeperClient.verifyConnection(timeout);
     }
 
     private void asyncJoinCluster(final boolean initial) {
