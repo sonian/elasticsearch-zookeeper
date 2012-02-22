@@ -112,7 +112,7 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
      * Retrieves cluster state
      *
      * @param newClusterStateListener triggered when cluster state changes
-     * @return
+     * @return ClusterState
      * @throws ElasticSearchException
      * @throws InterruptedException
      */
