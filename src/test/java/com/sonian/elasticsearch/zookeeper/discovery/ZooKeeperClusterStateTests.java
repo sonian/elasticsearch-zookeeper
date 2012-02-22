@@ -22,6 +22,8 @@ import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.routing.*;
 import org.elasticsearch.common.settings.ImmutableSettings;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.util.concurrent.CountDownLatch;
@@ -34,6 +36,15 @@ import static org.hamcrest.Matchers.*;
  * @author imotov
  */
 public class ZooKeeperClusterStateTests extends AbstractZooKeeperTests {
+    @BeforeClass
+    public void createTestPaths() throws Exception {
+        startZooKeeper();
+    }
+
+    @AfterClass
+    public void shutdownZooKeeper() {
+        stopZooKeeper();
+    }
 
     public ZooKeeperClusterStateTests() {
         putDefaultSettings(ImmutableSettings.settingsBuilder().put("zookeeper.maxnodesize", 10).build());

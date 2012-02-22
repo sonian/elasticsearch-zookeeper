@@ -71,7 +71,7 @@ public abstract class AbstractZooKeeperTests {
     }
 
 
-    @BeforeClass public void startZooKeeper() throws IOException, InterruptedException {
+    public void startZooKeeper() throws IOException, InterruptedException {
         startZooKeeper(true);
     }
 
@@ -94,7 +94,7 @@ public abstract class AbstractZooKeeperTests {
         environment = new ZooKeeperEnvironment(defaultSettings, ClusterName.clusterNameFromSettings(defaultSettings));
     }
 
-    @AfterClass public void stopZooKeeper() {
+    public void stopZooKeeper() {
         if (embeddedZooKeeperService != null) {
             embeddedZooKeeperService.stop();
             embeddedZooKeeperService.close();

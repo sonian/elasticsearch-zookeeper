@@ -20,6 +20,7 @@ import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClientException;
 import org.elasticsearch.ElasticSearchException;
 import com.sonian.elasticsearch.zookeeper.client.AbstractNodeListener;
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClient;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -41,7 +42,13 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
 
     @BeforeClass
     public void createTestPaths() throws Exception {
+        startZooKeeper();
         buildZooKeeper().createPersistentNode("/tests/nodes");
+    }
+
+    @AfterClass
+    public void shutdownZooKeeper() {
+        stopZooKeeper();
     }
 
     @Test
