@@ -65,7 +65,7 @@ public class TransportNodesZooKeeperStatusAction extends
 
     @Override
     protected String executor() {
-        return ThreadPool.Names.CACHED;
+        return ThreadPool.Names.CACHE;
     }
 
     @Override

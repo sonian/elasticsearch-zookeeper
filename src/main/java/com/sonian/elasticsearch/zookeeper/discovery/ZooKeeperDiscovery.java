@@ -229,7 +229,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
     }
 
     private void asyncJoinCluster(final boolean initial) {
-        threadPool.cached().execute(new Runnable() {
+        threadPool.executor(ThreadPool.Names.CACHE).execute(new Runnable() {
             @Override public void run() {
                 currentJoinThread = Thread.currentThread();
                 try {
