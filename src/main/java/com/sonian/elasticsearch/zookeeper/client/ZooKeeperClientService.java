@@ -59,7 +59,7 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
 
     private final Lock sessionRestartLock = new ReentrantLock();
 
-    private final CopyOnWriteArrayList<SessionResetListener> sessionResetListeners = new CopyOnWriteArrayList<SessionResetListener>();
+    private final CopyOnWriteArrayList<SessionStateListener> sessionStateListeners = new CopyOnWriteArrayList<SessionStateListener>();
 
     @Inject
     public ZooKeeperClientService(Settings settings, ZooKeeperEnvironment environment, ZooKeeperFactory zooKeeperFactory) {
@@ -72,34 +72,27 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
     @Override
     protected void doStart() throws ElasticSearchException {
         try {
-            zooKeeper = zooKeeperFactory.newZooKeeper();
+            final Watcher watcher = new Watcher() {
+                @Override
+                public void process(WatchedEvent event) {
+                    switch (event.getState()) {
+                        case Expired:
+                            resetSession();
+                            break;
+                        case SyncConnected:
+                            notifySessionConnected();
+                            break;
+                        case Disconnected:
+                            notifySessionDisconnected();
+                            break;
+                    }
+                }
+            };
+            zooKeeper = zooKeeperFactory.newZooKeeper(watcher);
             createPersistentNode(environment.rootNodePath());
             createPersistentNode(environment.clustersNodePath());
-            registerSessionResetListener();
         } catch (InterruptedException e) {
             throw new ZooKeeperClientException("Cannot start ZooKeeper client", e);
-        }
-    }
-
-    private void registerSessionResetListener() throws ZooKeeperClientException, InterruptedException {
-        String testNode = "/";
-        final Watcher watcher = new Watcher() {
-            @Override
-            public void process(WatchedEvent event) {
-                if (event.getState() == Event.KeeperState.Disconnected) {
-                    resetSession();
-                }
-            }
-        };
-        try {
-            zooKeeper.exists(testNode, watcher);
-        } catch (KeeperException e) {
-            throw new ZooKeeperClientException("Error registering session reset listener", e);
-        } catch (InterruptedException e) {
-            throw e;
-        } catch (Exception e) {
-            logger.warn("Unknown Exception", e);
-            throw new ZooKeeperClientException("Error registering session reset listener", e);
         }
     }
 
@@ -455,13 +448,13 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
     }
 
     @Override
-    public void addSessionResetListener(SessionResetListener sessionResetListener) {
-        sessionResetListeners.add(sessionResetListener);
+    public void addSessionStateListener(SessionStateListener sessionStateListener) {
+        sessionStateListeners.add(sessionStateListener);
     }
 
     @Override
-    public void removeSessionResetListener(SessionResetListener sessionResetListener) {
-        sessionResetListeners.remove(sessionResetListener);
+    public void removeSessionStateListener(SessionStateListener sessionStateListener) {
+        sessionStateListeners.remove(sessionStateListener);
     }
 
     @Override
@@ -549,8 +542,20 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
     }
 
     private void notifySessionReset() {
-        for (SessionResetListener listener : sessionResetListeners) {
-            listener.sessionReset();
+        for (SessionStateListener listener : sessionStateListeners) {
+            listener.sessionExpired();
+        }
+    }
+
+    private void notifySessionConnected() {
+        for (SessionStateListener listener : sessionStateListeners) {
+            listener.sessionConnected();
+        }
+    }
+
+    private void notifySessionDisconnected() {
+        for (SessionStateListener listener : sessionStateListeners) {
+            listener.sessionDisconnected();
         }
     }
 
@@ -558,11 +563,14 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
         boolean connectionLossReported = false;
         while (true) {
             try {
+                if (zooKeeper == null) {
+                    throw new ZooKeeperClientException("ZooKeeper is not available - reconnecting");
+                }
                 return callable.call();
             } catch (KeeperException.ConnectionLossException ex) {
                 if (!connectionLossReported) {
                     logger.debug("Connection Loss Exception");
-                    connectionLossReported =  true;
+                    connectionLossReported = true;
                 }
                 Thread.sleep(CONNECTION_LOSS_RETRY_WAIT);
             } catch (KeeperException.SessionExpiredException e) {
@@ -586,14 +594,16 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
             return new Watcher() {
                 @Override
                 public void process(WatchedEvent event) {
-                    if (event.getState() == Event.KeeperState.Disconnected) {
-                        resetSession();
-                    } else if (event.getType() == Watcher.Event.EventType.NodeCreated) {
-                        nodeListener.onNodeCreated(event.getPath());
-                    } else if (event.getType() == Watcher.Event.EventType.NodeDeleted) {
-                        nodeListener.onNodeDeleted(event.getPath());
-                    } else if (event.getType() == Watcher.Event.EventType.NodeDataChanged) {
-                        nodeListener.onNodeDataChanged(event.getPath());
+                    switch (event.getType()) {
+                        case NodeCreated:
+                            nodeListener.onNodeCreated(event.getPath());
+                            break;
+                        case NodeDeleted:
+                            nodeListener.onNodeDeleted(event.getPath());
+                            break;
+                        case NodeDataChanged:
+                            nodeListener.onNodeDataChanged(event.getPath());
+                            break;
                     }
                 }
             };

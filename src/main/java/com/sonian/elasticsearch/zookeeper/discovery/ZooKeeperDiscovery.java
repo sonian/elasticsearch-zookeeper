@@ -59,6 +59,7 @@ import static org.elasticsearch.cluster.node.DiscoveryNodes.newNodesBuilder;
  * @author imotov
  */
 public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> implements Discovery, DiscoveryNodesProvider {
+
     private final TransportService transportService;
 
     private final ClusterService clusterService;
@@ -89,11 +90,13 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
 
     private final MasterNodeListChangedListener masterNodeListChangedListener = new MasterNodeListChangedListener();
 
-    private final SessionResetListener sessionResetListener = new SessionResetListener();
+    private final SessionStateListener sessionResetListener = new SessionStateListener();
 
     private final DiscoveryNodeService discoveryNodeService;
 
     private final ZooKeeperEnvironment environment;
+
+    private final AtomicBoolean connected = new AtomicBoolean();
 
     @Nullable
     private NodeService nodeService;
@@ -124,8 +127,8 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         localNodePath = nodePath(localNode.id());
         latestDiscoNodes = new DiscoveryNodes.Builder().put(localNode).localNodeId(localNode.id()).build();
         initialStateSent.set(false);
+        zooKeeperClient.addSessionStateListener(sessionResetListener);
         zooKeeperClient.start();
-        zooKeeperClient.addSessionResetListener(sessionResetListener);
         createRootNodes();
 
         statePublisher.start();
@@ -147,7 +150,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
     @Override protected void doStop() throws ElasticSearchException {
         statePublisher.stop();
 
-        zooKeeperClient.removeSessionResetListener(sessionResetListener);
+        zooKeeperClient.removeSessionStateListener(sessionResetListener);
         logger.trace("Stopping zooKeeper client");
         zooKeeperClient.stop();
         logger.trace("Stopped zooKeeper client");
@@ -225,7 +228,9 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
     }
 
     public boolean verifyConnection(TimeValue timeout) throws InterruptedException {
-        return zooKeeperClient.verifyConnection(timeout);
+        if(connected.get()) {
+            return zooKeeperClient.verifyConnection(timeout);
+        } return false;
     }
 
     private void asyncJoinCluster(final boolean initial) {
@@ -396,7 +401,6 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         handleUpdateNodeList();
     }
 
-
     private void restartDiscovery() {
         if (!lifecycle.started()) {
             return;
@@ -405,6 +409,16 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         createRootNodes();
         master = false;
         asyncJoinCluster(true);
+    }
+
+    private void setSessionDisconnected() {
+        logger.trace("Session Disconnected");
+        connected.set(false);
+    }
+
+    private void setSessionConnected() {
+        logger.trace("Session Connected");
+        connected.set(true);
     }
 
     private void updateNodeList(final Set<String> nodes) {
@@ -500,6 +514,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
             return;
         }
         if (!master) {
+            logger.trace("No longer master - shouldn't monitor node changes");
             return;
         }
         logger.trace("Updating node list");
@@ -575,11 +590,24 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         }
     }
 
-    private class SessionResetListener implements ZooKeeperClient.SessionResetListener {
+    private class SessionStateListener implements ZooKeeperClient.SessionStateListener {
 
-        @Override public void sessionReset() {
+        @Override
+        public void sessionDisconnected() {
+            setSessionDisconnected();
+        }
+
+        @Override
+        public void sessionConnected() {
+            setSessionConnected();
+        }
+
+        @Override public void sessionExpired() {
             restartDiscovery();
         }
+
+
+
     }
 
     private interface StatePublisher {

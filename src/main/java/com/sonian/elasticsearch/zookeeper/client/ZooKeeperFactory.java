@@ -48,15 +48,18 @@ public class ZooKeeperFactory extends AbstractComponent {
     }
 
     public ZooKeeper newZooKeeper() {
+        return newZooKeeper(new Watcher() {
+            @Override public void process(WatchedEvent event) {
+            }
+        });
+    }
+
+    public ZooKeeper newZooKeeper(Watcher watcher) {
         try {
-            return new ZooKeeper(host, (int) sessionTimeout.millis(), new Watcher() {
-                                @Override public void process(WatchedEvent event) {
-                                }
-                            });
+            return new ZooKeeper(host, (int) sessionTimeout.millis(), watcher);
         } catch (IOException e) {
             throw new ElasticSearchException("Cannot start ZooKeeper", e);
         }
     }
-
 
 }
