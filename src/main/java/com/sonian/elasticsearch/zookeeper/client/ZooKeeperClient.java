@@ -52,9 +52,9 @@ public interface ZooKeeperClient extends LifecycleComponent<ZooKeeperClient> {
     byte[] getLargeNode(final String path) throws InterruptedException;
 
 
-    void addSessionResetListener(SessionResetListener sessionResetListener);
+    void addSessionStateListener(SessionStateListener sessionStateListener);
 
-    void removeSessionResetListener(SessionResetListener sessionResetListener);
+    void removeSessionStateListener(SessionStateListener sessionStateListener);
 
     boolean verifyConnection(TimeValue timeout) throws InterruptedException ;
 
@@ -62,8 +62,10 @@ public interface ZooKeeperClient extends LifecycleComponent<ZooKeeperClient> {
 
     long sessionId();
 
-    interface SessionResetListener {
-        public void sessionReset();
+    interface SessionStateListener {
+        public void sessionDisconnected();
+        public void sessionConnected();
+        public void sessionExpired();
     }
 
     interface NodeListener {
