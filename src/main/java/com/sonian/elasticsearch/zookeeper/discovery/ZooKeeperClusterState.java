@@ -64,6 +64,8 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
 
     private final String clusterStateVersion = Version.CURRENT.number();
 
+    private volatile boolean watching = true;
+
     public ZooKeeperClusterState(Settings settings, ZooKeeperEnvironment environment, ZooKeeperClient zooKeeperClient, DiscoveryNodesProvider nodesProvider) {
         super(settings);
         this.zooKeeperClient = zooKeeperClient;
@@ -123,19 +125,27 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
                 return null;
             }
             logger.trace("Retrieving new cluster state");
-
+            if (newClusterStateListener != null) {
+                watching = true;
+            } else {
+                watching = false;
+            }
             final String statePath = environment.statePartsNodePath();
             ZooKeeperClient.NodeListener nodeListener;
             if (newClusterStateListener != null) {
                 nodeListener = new AbstractNodeListener() {
                     @Override
                     public void onNodeCreated(String id) {
-                        updateClusterState(newClusterStateListener);
+                        if (watching) {
+                            updateClusterState(newClusterStateListener);
+                        }
                     }
 
                     @Override
                     public void onNodeDataChanged(String id) {
-                        updateClusterState(newClusterStateListener);
+                        if (watching) {
+                            updateClusterState(newClusterStateListener);
+                        }
                     }
                 };
             } else {
