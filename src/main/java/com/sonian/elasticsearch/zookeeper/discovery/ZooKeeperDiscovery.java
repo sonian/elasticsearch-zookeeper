@@ -378,7 +378,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         logger.trace("Elected as master ({})", localNode.id());
         this.master = true;
         statePublisher.becomeMaster();
-        clusterService.submitStateUpdateTask("zen-disco-join (elected_as_master)", new ProcessedClusterStateUpdateTask() {
+        clusterService.submitStateUpdateTask("zoo-keeper-disco-join (elected_as_master)", new ProcessedClusterStateUpdateTask() {
             @Override public ClusterState execute(ClusterState currentState) {
                 DiscoveryNodes.Builder builder = new DiscoveryNodes.Builder();
                 // Make sure that the current node is present
