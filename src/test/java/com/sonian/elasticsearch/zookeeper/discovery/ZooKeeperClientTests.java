@@ -20,6 +20,7 @@ import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClientException;
 import org.elasticsearch.ElasticSearchException;
 import com.sonian.elasticsearch.zookeeper.client.AbstractNodeListener;
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClient;
+import org.elasticsearch.common.settings.ImmutableSettings;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -277,4 +278,44 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
         assertThat(zk1.getNode("/tests", null), notNullValue());
     }
 
+    @Test
+    public void testLargeSequentialNode() throws Exception {
+        byte[] largeData = new byte[1024 * 1024 * 10];
+
+        for (int i = 0; i < largeData.length; i++) {
+            largeData[i] = (byte) (i % 119);
+        }
+
+        ZooKeeperClient zk1 = buildZooKeeper();
+        String path = zk1.createLargeSequentialNode("/tests/large-node_", largeData);
+        try {
+            byte[] largeDataCreated = zk1.getLargeNode(path);
+            assertThat(largeDataCreated.length, equalTo(largeData.length));
+            for (int i = 0; i < largeDataCreated.length; i++) {
+                assertThat(largeDataCreated[i], equalTo(largeData[i]));
+            }
+        } finally {
+            zk1.deleteLargeNode(path);
+        }
+    }
+
+
+    @Test public void testLargeSequentialNodeWithVariableSize() throws Exception {
+        byte[] largeData = new byte[1024 * 1024 * 10];
+
+        for (int i = 0; i < largeData.length; i++) {
+            largeData[i] = (byte) (i % 119);
+        }
+
+        ZooKeeperClient zk1 = buildZooKeeper(ImmutableSettings.settingsBuilder().put("zookeeper.maxnodesize", 1000000).build());
+        String path = zk1.createLargeSequentialNode("/tests/large-node_", largeData);
+
+        ZooKeeperClient zk2 = buildZooKeeper(ImmutableSettings.settingsBuilder().put("zookeeper.maxnodesize", 100000).build());
+        byte[] largeDataCreated = zk2.getLargeNode(path);
+        assertThat(largeDataCreated.length, equalTo(largeData.length));
+        for (int i = 0; i < largeDataCreated.length; i++) {
+            assertThat(largeDataCreated[i], equalTo(largeData[i]));
+        }
+        zk2.deleteLargeNode(path);
+    }
 }
