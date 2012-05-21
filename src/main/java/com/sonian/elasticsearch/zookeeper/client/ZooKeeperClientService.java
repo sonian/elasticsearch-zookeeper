@@ -51,7 +51,8 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
 
     private final ZooKeeperFactory zooKeeperFactory;
 
-    private static final int MAX_NODE_SIZE = 1024 * 1024;
+    // Make it less than 1M to leave some space for extra zookeeper data
+    private static final int MAX_NODE_SIZE = 1000000;
 
     private static final long CONNECTION_LOSS_RETRY_WAIT = 1000;
 
@@ -367,7 +368,7 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
             for (int i = 0; i < size; i += maxNodeSize) {
                 final String chunkPath = rootPath + "/" + chunkNum;
                 final byte[] chunk;
-                if (size < maxNodeSize) {
+                if (size > maxNodeSize) {
                     chunk = Arrays.copyOfRange(data, i, Math.min(size, i + maxNodeSize));
                 } else {
                     chunk = data;
@@ -424,7 +425,8 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
             int chunkNum = 0;
 
             BytesStreamOutput buf = new BytesStreamOutput(size);
-            for (int i = 0; i < size; i += maxNodeSize) {
+            int offset = 0;
+            while (offset < size) {
                 final String chunkPath = path + "/" + chunkNum;
                 byte[] chunk = zooKeeperCall("Cannot read node", new Callable<byte[]>() {
                     @Override
@@ -432,7 +434,11 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
                         return zooKeeper.getData(chunkPath, null, null);
                     }
                 });
+                if (chunk == null || chunk.length == 0) {
+                    return null;
+                }
                 buf.write(chunk);
+                offset += chunk.length;
                 chunkNum++;
             }
             return buf.copiedByteArray();
