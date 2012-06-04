@@ -4,9 +4,14 @@ h2. Usage
 
 h3. Installation
 
-* Download ZooKeeper 3.3.3 from http://zookeeper.apache.org/releases.html
+* Download ZooKeeper 3.3.5 from http://zookeeper.apache.org/releases.html
 * Unzip the ZooKeeper archive into a directory, rename conf/zoo-sample.cnf into zoo.cnf and modify dataDir= line to point to a directory on your machine. Start ZooKeeper by running bin/zkServer.sh start.
-* Install ZooKeeper plugin to ES
+* Install ZooKeeper plugin to ES by running
+
+<pre>
+bin/plugin -install sonian/elasticsearch-zookeeper/0.19.6
+</pre>
+
 * Assuming that you are running ZooKeeper on the port 2181 (default), add the following lines to config/elasticsearch.yml file
 
 <pre>
@@ -88,3 +93,8 @@ The watcher that is set during read operation on the leader ZK node is also trig
 h3. Node List Update
 
 If ES node is elected as a master, it reads list of children of the /es/clusters/*_cluster name_*/nodes node and starts watching for any changes in the list. Then ES updates the list of nodes in the cluster state to match the list of nodes in ZK. When the watcher on the /es/clusters/*_cluster name_*/nodes node is triggered the Node List Update operation is repeated. In other words ephemeral nodes in /es/clusters/*_cluster name_*/nodes perform the role of node fault detections.
+
+h2. User group
+
+Join <a href="https://groups.google.com/forum/#!forum/elasticsearch-zookeeper">elasticsearch-zookeeper group</a> for questions and discussions related to this plugin.
+
