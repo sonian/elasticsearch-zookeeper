@@ -30,8 +30,8 @@
     </parent>
 
     <properties>
-        <elasticsearch.version>0.19.1</elasticsearch.version>
-        <zookeeper.version>3.3.3</zookeeper.version>
+        <elasticsearch.version>0.19.3</elasticsearch.version>
+        <zookeeper.version>3.3.5</zookeeper.version>
     </properties>
 
     <repositories>
