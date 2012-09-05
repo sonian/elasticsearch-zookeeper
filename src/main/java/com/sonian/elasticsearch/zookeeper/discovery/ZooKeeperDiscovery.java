@@ -270,7 +270,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
             // Create an ephemeral node that contains our nodeInfo
             BytesStreamOutput streamOutput = new BytesStreamOutput();
             localNode.writeTo(streamOutput);
-            byte[] buf = streamOutput.copiedByteArray();
+            byte[] buf = streamOutput.bytes().copyBytesArray().toBytes();
             zooKeeperClient.setOrCreateTransientNode(localNodePath, buf);
             return true;
         } catch (Exception ex) {

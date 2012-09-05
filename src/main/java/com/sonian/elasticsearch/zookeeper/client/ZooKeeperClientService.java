@@ -441,7 +441,7 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
                 offset += chunk.length;
                 chunkNum++;
             }
-            return buf.copiedByteArray();
+            return buf.bytes().copyBytesArray().toBytes();
         } catch (KeeperException.NoNodeException e) {
             // This means that a new version of state is already posted and this version is
             // getting deleted - exit
