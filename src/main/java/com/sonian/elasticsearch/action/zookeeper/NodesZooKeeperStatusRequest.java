@@ -21,9 +21,9 @@ import org.elasticsearch.common.unit.TimeValue;
 
 /**
  */
-public class NodesZooKeeperStatusRequest extends NodesOperationRequest {
+public class NodesZooKeeperStatusRequest extends NodesOperationRequest<NodesZooKeeperStatusRequest> {
 
-    private TimeValue timeout = TimeValue.timeValueSeconds(10);
+    private TimeValue zooKeeperTimeout = TimeValue.timeValueSeconds(10);
 
     public NodesZooKeeperStatusRequest() {
 
@@ -33,12 +33,12 @@ public class NodesZooKeeperStatusRequest extends NodesOperationRequest {
         super(nodeIds);
     }
 
-    public NodesZooKeeperStatusRequest timeout(TimeValue timeout) {
-        this.timeout = timeout;
+    public NodesZooKeeperStatusRequest zooKeeperTimeout(TimeValue timeout) {
+        this.zooKeeperTimeout = timeout;
         return this;
     }
 
-    public TimeValue timeout() {
-        return timeout;
+    public TimeValue zooKeeperTimeout() {
+        return zooKeeperTimeout;
     }
 }

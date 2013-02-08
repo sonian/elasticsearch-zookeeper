@@ -27,6 +27,7 @@ import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.cluster.node.DiscoveryNodeService;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.routing.RoutingTable;
+import org.elasticsearch.cluster.routing.allocation.AllocationService;
 import org.elasticsearch.common.UUID;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
 import org.elasticsearch.common.inject.Inject;
@@ -187,6 +188,11 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
     @Override
     public void setNodeService(@Nullable NodeService nodeService) {
         this.nodeService = nodeService;
+    }
+
+    @Override
+    public void setAllocationService(AllocationService allocationService) {
+        //TODO: Implement eager rerouting when node leaves the cluster
     }
 
 

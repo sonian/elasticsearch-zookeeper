@@ -50,7 +50,7 @@ public class RestZooKeeperStatusAction extends BaseRestHandler {
     public void handleRequest(final RestRequest request, final RestChannel channel) {
         String[] nodesIds = RestActions.splitNodes(request.param("nodeId"));
         NodesZooKeeperStatusRequest zooKeeperStatusRequest = new NodesZooKeeperStatusRequest(nodesIds);
-        zooKeeperStatusRequest.timeout(request.paramAsTime("timeout", TimeValue.timeValueSeconds(10)));
+        zooKeeperStatusRequest.zooKeeperTimeout(request.paramAsTime("timeout", TimeValue.timeValueSeconds(10)));
         transportNodesZooKeeperStatusAction.execute(zooKeeperStatusRequest, new ActionListener<NodesZooKeeperStatusResponse>() {
             @Override
             public void onResponse(NodesZooKeeperStatusResponse result) {
