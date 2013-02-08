@@ -94,7 +94,7 @@ public class TransportNodesZooKeeperStatusAction extends
 
     @Override
     protected NodeZooKeeperStatusRequest newNodeRequest(String nodeId, NodesZooKeeperStatusRequest nodesZooKeeperStatusRequest) {
-        return new NodeZooKeeperStatusRequest(nodeId, nodesZooKeeperStatusRequest.timeout());
+        return new NodeZooKeeperStatusRequest(nodesZooKeeperStatusRequest, nodeId);
     }
 
     @Override
@@ -124,31 +124,31 @@ public class TransportNodesZooKeeperStatusAction extends
 
     public static class NodeZooKeeperStatusRequest extends NodeOperationRequest {
 
-        private TimeValue timeout;
+        private TimeValue zooKeeperTimeout;
 
         private NodeZooKeeperStatusRequest() {
 
         }
 
-        private NodeZooKeeperStatusRequest(String nodeId, TimeValue timeout) {
-            super(nodeId);
-            this.timeout = timeout;
+        private NodeZooKeeperStatusRequest(NodesZooKeeperStatusRequest request, String nodeId) {
+            super(request, nodeId);
+            zooKeeperTimeout = request.zooKeeperTimeout();
         }
 
         @Override
         public void readFrom(StreamInput in) throws IOException {
             super.readFrom(in);
-            timeout = TimeValue.readTimeValue(in);
+            zooKeeperTimeout = TimeValue.readTimeValue(in);
         }
 
         @Override
         public void writeTo(StreamOutput out) throws IOException {
             super.writeTo(out);
-            timeout.writeTo(out);
+            zooKeeperTimeout.writeTo(out);
         }
 
         public TimeValue timeout() {
-            return timeout;
+            return zooKeeperTimeout;
         }
     }
 }
