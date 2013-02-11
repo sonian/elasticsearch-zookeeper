@@ -16,6 +16,11 @@
 
 package com.sonian.elasticsearch.zookeeper.discovery;
 
+import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClient;
+import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClientService;
+import com.sonian.elasticsearch.zookeeper.client.ZooKeeperEnvironment;
+import com.sonian.elasticsearch.zookeeper.client.ZooKeeperFactory;
+import com.sonian.elasticsearch.zookeeper.discovery.embedded.EmbeddedZooKeeperService;
 import org.elasticsearch.cluster.ClusterName;
 import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
@@ -25,15 +30,11 @@ import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkUtils;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
-import com.sonian.elasticsearch.zookeeper.discovery.embedded.EmbeddedZooKeeperService;
 import org.elasticsearch.discovery.zen.DiscoveryNodesProvider;
 import org.elasticsearch.env.Environment;
-import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClient;
-import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClientService;
-import com.sonian.elasticsearch.zookeeper.client.ZooKeeperEnvironment;
-import com.sonian.elasticsearch.zookeeper.client.ZooKeeperFactory;
+import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.node.service.NodeService;
-import org.testng.annotations.*;
+import org.testng.annotations.AfterMethod;
 
 import java.io.File;
 import java.io.IOException;
@@ -80,7 +81,7 @@ public abstract class AbstractZooKeeperTests {
         if (cleanDirectory) {
             File zooKeeperDataDirectory = new File(tempEnvironment.dataFiles()[0], "zookeeper");
             logger.info("Deleting zookeeper directory {}", zooKeeperDataDirectory);
-            if(deleteDirectory(zooKeeperDataDirectory)) {
+            if (deleteDirectory(zooKeeperDataDirectory)) {
                 logger.info("Zookeeper directory {} was deleted", zooKeeperDataDirectory);
             }
         }
@@ -109,7 +110,8 @@ public abstract class AbstractZooKeeperTests {
         startZooKeeper(false);
     }
 
-    @AfterMethod public void stopZooKeeperClients() {
+    @AfterMethod
+    public void stopZooKeeperClients() {
         for (ZooKeeperClient zooKeeperClient : zooKeeperClients) {
             logger.info("Closing {}" + zooKeeperClient);
             zooKeeperClient.stop();
@@ -188,8 +190,11 @@ public abstract class AbstractZooKeeperTests {
         for (int i = 0; i < 1000; i++) {
             IndexRoutingTable.Builder indexRoutingTableBuilder = new IndexRoutingTable.Builder("index");
             for (int j = 0; j < 100; j++) {
-                ShardRouting shardRouting = new ImmutableShardRouting("index", j, "i" + i + "s" + j, true, ShardRoutingState.STARTED, 0L);
-                indexRoutingTableBuilder.addShard(shardRouting, true);
+                ShardId shardId = new ShardId("index", j);
+                IndexShardRoutingTable.Builder indexShardRoutingTableBuilder = new IndexShardRoutingTable.Builder(shardId, true);
+                ImmutableShardRouting shardRouting = new ImmutableShardRouting("index", j, "i" + i + "s" + j, true, ShardRoutingState.STARTED, 0L);
+                indexShardRoutingTableBuilder.addShard(shardRouting);
+                indexRoutingTableBuilder.addShard(indexShardRoutingTableBuilder.build(), shardRouting);
             }
             routingTableBuilder.add(indexRoutingTableBuilder);
         }
