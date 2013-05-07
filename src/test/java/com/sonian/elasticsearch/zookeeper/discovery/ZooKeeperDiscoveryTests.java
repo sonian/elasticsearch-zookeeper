@@ -400,9 +400,9 @@ public class ZooKeeperDiscoveryTests extends AbstractZooKeeperNodeTests {
         assertThat(client("node2").admin().cluster().prepareHealth().setWaitForNodes("3").execute().actionGet().getNumberOfNodes(), equalTo(3));
         assertThat(client("node3").admin().cluster().prepareHealth().setWaitForNodes("3").execute().actionGet().getNumberOfNodes(), equalTo(3));
 
-        String master1 = client("node1").admin().cluster().prepareState().execute().actionGet().state().nodes().masterNode().name();
-        String master2 = client("node2").admin().cluster().prepareState().execute().actionGet().state().nodes().masterNode().name();
-        String master3 = client("node3").admin().cluster().prepareState().execute().actionGet().state().nodes().masterNode().name();
+        String master1 = client("node1").admin().cluster().prepareState().execute().actionGet().getState().nodes().masterNode().name();
+        String master2 = client("node2").admin().cluster().prepareState().execute().actionGet().getState().nodes().masterNode().name();
+        String master3 = client("node3").admin().cluster().prepareState().execute().actionGet().getState().nodes().masterNode().name();
         assertThat(master1, equalTo(master2));
         assertThat(master1, equalTo(master3));
 
@@ -550,15 +550,15 @@ public class ZooKeeperDiscoveryTests extends AbstractZooKeeperNodeTests {
                 .execute()
                 .actionGet();
 
-        return countResponse.count();
+        return countResponse.getCount();
     }
 
     private void logHealth(String id) throws InterruptedException {
         ClusterHealthResponse response = client(id).admin().cluster().prepareHealth().execute().actionGet();
-        logger.info("Health: [{}] shards A/P/I {}/{}/{} indices: {} ", response.status(),
-                response.activeShards(), response.activePrimaryShards(),
-                response.initializingShards(),
-                response.indices().size()
+        logger.info("Health: [{}] shards A/P/I {}/{}/{} indices: {} ", response.getStatus(),
+                response.getActiveShards(), response.getActivePrimaryShards(),
+                response.getInitializingShards(),
+                response.getIndices().size()
         );
 
     }
@@ -566,7 +566,7 @@ public class ZooKeeperDiscoveryTests extends AbstractZooKeeperNodeTests {
     private void waitForGreen(String id) throws InterruptedException {
         while (true) {
             ClusterHealthResponse response = client(id).admin().cluster().prepareHealth().execute().actionGet();
-            if (response.status() == ClusterHealthStatus.GREEN) {
+            if (response.getStatus() == ClusterHealthStatus.GREEN) {
                 return;
             }
             Thread.sleep(100);
