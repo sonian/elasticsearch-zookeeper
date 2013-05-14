@@ -20,7 +20,7 @@ h3. Installation
 * Install ZooKeeper plugin to ES by running
 
 <pre>
-% bin/plugin -url https://oss-es-plugins.s3.amazonaws.com/elasticsearch-zookeeper/elasticsearch-zookeeper-0.20.0.zip -install elasticsearch-zookeeper-0.20.0
+% bin/plugin -url https://oss-es-plugins.s3.amazonaws.com/elasticsearch-zookeeper/elasticsearch-zookeeper-0.90.0.zip -install elasticsearch-zookeeper-0.90.0
 </pre>
 
 * Assuming that you are running ZooKeeper on the port 2181 (default), add the following lines to config/elasticsearch.yml file
