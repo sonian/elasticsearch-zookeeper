@@ -26,6 +26,8 @@ import org.elasticsearch.common.io.stream.BytesStreamOutput;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
 
+import com.sonian.elasticsearch.utils.Bytes;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -358,7 +360,7 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
             rootPath = zooKeeperCall("Cannot create node at " + pathPrefix, new Callable<String>() {
                 @Override
                 public String call() throws Exception {
-                    return zooKeeper.create(pathPrefix, Integer.toString(size).getBytes("US-ASCII"), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
+                    return zooKeeper.create(pathPrefix,Bytes.itoa(size), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
                 }
             });
             int chunkNum = 0;
@@ -420,7 +422,7 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
                     return zooKeeper.getData(path, null, null);
                 }
             });
-            final int size = Integer.parseInt(new String(sizeBuf, "US-ASCII"));
+            final int size = Bytes.atoi(sizeBuf);
             int chunkNum = 0;
 
             BytesStreamOutput buf = new BytesStreamOutput(size);

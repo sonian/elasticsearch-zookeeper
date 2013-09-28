@@ -21,6 +21,7 @@ import com.sonian.elasticsearch.action.zookeeper.NodesZooKeeperStatusResponse;
 import com.sonian.elasticsearch.action.zookeeper.TransportNodesZooKeeperStatusAction;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
@@ -48,7 +49,7 @@ public class RestZooKeeperStatusAction extends BaseRestHandler {
 
     @Override
     public void handleRequest(final RestRequest request, final RestChannel channel) {
-        String[] nodesIds = RestActions.splitNodes(request.param("nodeId"));
+        String[] nodesIds = Strings.splitStringByCommaToArray(request.param("nodeId"));
         NodesZooKeeperStatusRequest zooKeeperStatusRequest = new NodesZooKeeperStatusRequest(nodesIds);
         zooKeeperStatusRequest.zooKeeperTimeout(request.paramAsTime("timeout", TimeValue.timeValueSeconds(10)));
         transportNodesZooKeeperStatusAction.execute(zooKeeperStatusRequest, new ActionListener<NodesZooKeeperStatusResponse>() {
@@ -57,7 +58,7 @@ public class RestZooKeeperStatusAction extends BaseRestHandler {
                 try {
                     XContentBuilder builder = restContentBuilder(request);
                     builder.startObject();
-                    builder.field("cluster_name", result.getClusterName().value());
+                    builder.field("cluster_name", result.getClusterNameAsString());
 
                     builder.startObject("nodes");
                     for (NodesZooKeeperStatusResponse.NodeZooKeeperStatusResponse nodeInfo : result) {
