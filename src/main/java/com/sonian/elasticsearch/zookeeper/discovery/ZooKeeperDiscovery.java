@@ -16,11 +16,24 @@
 
 package com.sonian.elasticsearch.zookeeper.discovery;
 
-import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClient;
-import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClientSessionExpiredException;
-import com.sonian.elasticsearch.zookeeper.client.ZooKeeperEnvironment;
+import static org.elasticsearch.cluster.ClusterState.newClusterStateBuilder;
+import static org.elasticsearch.cluster.node.DiscoveryNodes.newNodesBuilder;
+
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 import org.elasticsearch.ElasticSearchException;
-import org.elasticsearch.cluster.*;
+import org.elasticsearch.Version;
+import org.elasticsearch.cluster.ClusterName;
+import org.elasticsearch.cluster.ClusterService;
+import org.elasticsearch.cluster.ClusterState;
+import org.elasticsearch.cluster.ClusterStateUpdateTask;
+import org.elasticsearch.cluster.ProcessedClusterStateUpdateTask;
 import org.elasticsearch.cluster.block.ClusterBlocks;
 import org.elasticsearch.cluster.metadata.MetaData;
 import org.elasticsearch.cluster.node.DiscoveryNode;
@@ -28,7 +41,7 @@ import org.elasticsearch.cluster.node.DiscoveryNodeService;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.routing.RoutingTable;
 import org.elasticsearch.cluster.routing.allocation.AllocationService;
-import org.elasticsearch.common.UUID;
+import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.internal.Nullable;
@@ -43,18 +56,11 @@ import org.elasticsearch.discovery.zen.publish.PublishClusterStateAction;
 import org.elasticsearch.node.service.NodeService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
+
 import com.sonian.elasticsearch.zookeeper.client.AbstractNodeListener;
-
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-
-import static org.elasticsearch.cluster.ClusterState.newClusterStateBuilder;
-import static org.elasticsearch.cluster.node.DiscoveryNodes.newNodesBuilder;
+import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClient;
+import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClientSessionExpiredException;
+import com.sonian.elasticsearch.zookeeper.client.ZooKeeperEnvironment;
 
 /**
  * @author imotov
@@ -123,8 +129,8 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
 
     @Override protected void doStart() throws ElasticSearchException {
         // note, we rely on the fact that its a new id each time we start, see FD and "kill -9" handling
-        String nodeId = UUID.randomBase64UUID();
-        localNode = new DiscoveryNode(settings.get("name"), nodeId, transportService.boundAddress().publishAddress(), discoveryNodeService.buildAttributes());
+        String nodeId = Strings.randomBase64UUID();
+        localNode = new DiscoveryNode(settings.get("name"), nodeId, transportService.boundAddress().publishAddress(), discoveryNodeService.buildAttributes(), Version.CURRENT);
         localNodePath = nodePath(localNode.id());
         latestDiscoNodes = new DiscoveryNodes.Builder().put(localNode).localNodeId(localNode.id()).build();
         initialStateSent.set(false);
@@ -374,9 +380,15 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
                         .build();
             }
 
-            @Override public void clusterStateProcessed(ClusterState clusterState) {
+            @Override public void clusterStateProcessed(String source, ClusterState oldState, ClusterState newState) {
                 sendInitialStateEventIfNeeded();
             }
+
+            @Override
+            public void onFailure(String source, Throwable t) {
+              logger.error("unexpected failure during [{}]", t, source);
+            }
+
         });
     }
 
@@ -399,8 +411,15 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
                 return newClusterStateBuilder().state(currentState).nodes(builder).blocks(clusterBlocks).build();
             }
 
-            @Override public void clusterStateProcessed(ClusterState clusterState) {
-                sendInitialStateEventIfNeeded();
+            @Override
+            public void onFailure(String source, Throwable t) {
+              logger.error("unexpected failure during [{}]", t, source);
+            }
+
+            @Override
+            public void clusterStateProcessed(String source,
+                ClusterState oldState, ClusterState newState) {
+              sendInitialStateEventIfNeeded();
             }
         });
 
@@ -432,7 +451,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
             @Override
             public ClusterState execute(ClusterState currentState) {
                 try {
-                    Set<String> currentNodes = latestDiscoNodes.nodes().keySet();
+                    Set<String> currentNodes = latestDiscoNodes.getNodes().keySet();
                     Set<String> deleted = new HashSet<String>(currentNodes);
                     deleted.removeAll(nodes);
                     Set<String> added = new HashSet<String>(nodes);
@@ -470,6 +489,11 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
                 }
                 return currentState;
             }
+
+            @Override
+            public void onFailure(String source, Throwable t) {
+              logger.error("unexpected failure during [{}]", t, source);
+            }
         });
     }
 
@@ -495,8 +519,16 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
                         return clusterState;
                     }
 
-                    @Override public void clusterStateProcessed(ClusterState clusterState) {
-                        sendInitialStateEventIfNeeded();
+                    @Override
+                    public void onFailure(String source, Throwable t) {
+                      logger.error("unexpected failure during [{}]", t, source);
+                    }
+
+                    @Override
+                    public void clusterStateProcessed(String source,
+                        ClusterState oldState, ClusterState newState) {
+                      sendInitialStateEventIfNeeded();
+                      
                     }
                 });
             } else {

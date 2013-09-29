@@ -22,6 +22,7 @@ import org.elasticsearch.action.support.nodes.NodeOperationRequest;
 import org.elasticsearch.action.support.nodes.TransportNodesOperationAction;
 import org.elasticsearch.cluster.ClusterName;
 import org.elasticsearch.cluster.ClusterService;
+import org.elasticsearch.common.collect.Lists;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
@@ -35,7 +36,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
-import static org.elasticsearch.common.collect.Lists.newArrayList;
 
 /**
  */
@@ -75,7 +75,7 @@ public class TransportNodesZooKeeperStatusAction extends
 
     @Override
     protected NodesZooKeeperStatusResponse newResponse(NodesZooKeeperStatusRequest nodesZooKeeperStatusRequest, AtomicReferenceArray responses) {
-        final List<NodesZooKeeperStatusResponse.NodeZooKeeperStatusResponse> nodeZooKeeperStatusResponses = newArrayList();
+        final List<NodesZooKeeperStatusResponse.NodeZooKeeperStatusResponse> nodeZooKeeperStatusResponses = Lists.newArrayList();
         for (int i = 0; i < responses.length(); i++) {
             Object resp = responses.get(i);
             if (resp instanceof NodesZooKeeperStatusResponse.NodeZooKeeperStatusResponse) {

@@ -23,10 +23,10 @@ import org.elasticsearch.node.Node;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
-import static org.elasticsearch.common.collect.Maps.newHashMap;
 import static org.elasticsearch.common.settings.ImmutableSettings.Builder.EMPTY_SETTINGS;
 import static org.elasticsearch.common.settings.ImmutableSettings.settingsBuilder;
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
@@ -37,9 +37,9 @@ public class AbstractZooKeeperNodeTests extends AbstractZooKeeperTests {
 
     protected Random rand = new Random();
 
-    private Map<String, Node> nodes = newHashMap();
+    private Map<String, Node> nodes = new HashMap<String, Node>();
 
-    private Map<String, Client> clients = newHashMap();
+    private Map<String, Client> clients = new HashMap<String, Client>();
 
     public Node buildNode(String id) {
         return buildNode(id, EMPTY_SETTINGS);
