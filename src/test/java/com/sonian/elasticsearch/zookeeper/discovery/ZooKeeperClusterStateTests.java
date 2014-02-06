@@ -75,8 +75,7 @@ public class ZooKeeperClusterStateTests extends AbstractZooKeeperTests {
         assertThat(ClusterState.Builder.toBytes(retrievedState),
                 equalTo(ClusterState.Builder.toBytes(initialState)));
 
-        ClusterState secondVersion = ClusterState.newClusterStateBuilder()
-                .state(initialState)
+        ClusterState secondVersion = ClusterState.builder(initialState)
                 .version(1235L)
                 .build();
 
