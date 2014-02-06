@@ -33,7 +33,7 @@ import org.elasticsearch.common.settings.loader.SettingsLoaderFactory;
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperEnvironment;
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperFactory;
 import org.elasticsearch.env.Environment;
-import org.elasticsearch.node.internal.InternalSettingsPerparer;
+import org.elasticsearch.node.internal.InternalSettingsPreparer;
 
 import java.io.File;
 import java.io.IOException;
@@ -178,9 +178,9 @@ public final class ZooKeeperSettingsManager extends AbstractLifecycleComponent<Z
             return;
         }
 
-        Tuple<Settings, Environment> initialSettings = InternalSettingsPerparer.prepareSettings(EMPTY_SETTINGS, true);
+        Tuple<Settings, Environment> initialSettings = InternalSettingsPreparer.prepareSettings(EMPTY_SETTINGS, true);
 
-        Settings settings = InternalSettingsPerparer.prepareSettings(initialSettings.v1(), true).v1();
+        Settings settings = InternalSettingsPreparer.prepareSettings(initialSettings.v1(), true).v1();
 
         setupLogging(settings);
         Loggers.disableConsoleLogging();
