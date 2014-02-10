@@ -172,7 +172,7 @@ public abstract class AbstractZooKeeperTests {
 
 
     protected ClusterState testClusterState(RoutingTable routingTable, DiscoveryNodes nodes) {
-        return ClusterState.newClusterStateBuilder()
+        return ClusterState.builder()
                 .version(1234L)
                 .routingTable(routingTable)
                 .nodes(nodes)
@@ -180,7 +180,7 @@ public abstract class AbstractZooKeeperTests {
     }
 
     protected DiscoveryNodes testDiscoveryNodes() {
-        return DiscoveryNodes.newNodesBuilder()
+        return DiscoveryNodes.builder()
                 .masterNodeId("localnodeid")
                 .build();
     }

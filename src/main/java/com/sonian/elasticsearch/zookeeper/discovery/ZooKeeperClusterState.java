@@ -161,8 +161,7 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
                 throw new ZooKeeperIncompatibleStateVersionException("Expected: " + clusterStateVersion() + ", actual: " + clusterStateVersion);
             }
 
-            ClusterState.Builder builder = ClusterState.newClusterStateBuilder()
-                    .version(buf.readLong());
+            ClusterState.Builder builder = ClusterState.builder().version(buf.readLong());
             for (ClusterStatePart<?> part : this.parts) {
                 builder = part.set(builder, buf.readString());
                 if (builder == null) {
