@@ -5,7 +5,8 @@ h2. Compatibility
 The following table shows the versions of elasticsearch and Apache Zookeeper that Zookeeper Plugin was built with.
 
 |_. ES-zk Plugin |_.  Elasticsearch    |_.  Zookeeper  |
-| 0.90.11        | 0.90.11             | 3.3.6         |
+| 0.90.1         | 0.90.12             | 3.3.6         |
+| 0.90.0         | 0.90.2              | 3.3.6         |
 | 0.20.0         | 0.20.4              | 3.3.6         |
 | 0.19.7         | 0.19.9              | 3.3.5         |
 | 0.19.6         | 0.19.3              | 3.3.5         |
