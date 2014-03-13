@@ -20,8 +20,14 @@ h3. Installation
 * Unzip the ZooKeeper archive into a directory, rename conf/zoo-sample.cnf into zoo.cnf and modify dataDir= line to point to a directory on your machine. Start ZooKeeper by running bin/zkServer.sh start.
 * Install ZooKeeper plugin to ES by running
 
+for elasticsearch-zookeeper versions 0.90.1 and above:
 <pre>
-% bin/plugin -url https://oss-es-plugins.s3.amazonaws.com/elasticsearch-zookeeper/elasticsearch-zookeeper-0.90.0.zip -install elasticsearch-zookeeper-0.90.0
+% bin/plugin -url https://github.com/imotov/elasticsearch-zookeeper/releases/download/v0.90.1/elasticsearch-zookeeper-0.90.1.zip -install zookeeper
+</pre>
+
+for elasticsearch-zookeeper versions 0.90.0 and below:
+<pre>
+% bin/plugin -url https://oss-es-plugins.s3.amazonaws.com/elasticsearch-zookeeper/elasticsearch-zookeeper-0.90.0.zip -install zookeeper
 </pre>
 
 * Assuming that you are running ZooKeeper on the port 2181 (default), add the following lines to config/elasticsearch.yml file
