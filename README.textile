@@ -17,15 +17,17 @@ h2. Usage
 h3. Installation
 
 * Download ZooKeeper 3.3.6 from http://zookeeper.apache.org/releases.html
-* Unzip the ZooKeeper archive into a directory, rename conf/zoo-sample.cnf into zoo.cnf and modify dataDir= line to point to a directory on your machine. Start ZooKeeper by running bin/zkServer.sh start.
+* Unzip the ZooKeeper archive into a directory, rename conf/zoo-sample.cfg into zoo.cfg and modify dataDir= line to point to a directory on your machine. Start ZooKeeper by running bin/zkServer.sh start.
 * Install ZooKeeper plugin to ES by running
 
 for elasticsearch-zookeeper versions 0.90.1 and above:
+
 <pre>
 % bin/plugin -url https://github.com/imotov/elasticsearch-zookeeper/releases/download/v0.90.1/elasticsearch-zookeeper-0.90.1.zip -install zookeeper
 </pre>
 
 for elasticsearch-zookeeper versions 0.90.0 and below:
+
 <pre>
 % bin/plugin -url https://oss-es-plugins.s3.amazonaws.com/elasticsearch-zookeeper/elasticsearch-zookeeper-0.90.0.zip -install zookeeper
 </pre>

@@ -18,7 +18,7 @@
 package com.sonian.elasticsearch.zookeeper.settings;
 
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClientService;
-import org.elasticsearch.ElasticSearchException;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.cluster.ClusterName;
 import org.elasticsearch.common.Classes;
 import org.elasticsearch.common.collect.Tuple;
@@ -58,17 +58,17 @@ public final class ZooKeeperSettingsManager extends AbstractLifecycleComponent<Z
     }
 
     @Override
-    protected void doStart() throws ElasticSearchException {
+    protected void doStart() throws ElasticsearchException {
         zooKeeperClientService.start();
     }
 
     @Override
-    protected void doStop() throws ElasticSearchException {
+    protected void doStop() throws ElasticsearchException {
         zooKeeperClientService.stop();
     }
 
     @Override
-    protected void doClose() throws ElasticSearchException {
+    protected void doClose() throws ElasticsearchException {
         zooKeeperClientService.close();
     }
 
@@ -110,7 +110,7 @@ public final class ZooKeeperSettingsManager extends AbstractLifecycleComponent<Z
             try {
                 return loader.load(settingsBytes);
             } catch (IOException ex) {
-                throw new ElasticSearchException("Cannot load settings ", ex);
+                throw new ElasticsearchException("Cannot load settings ", ex);
             }
         } else {
             return Collections.emptyMap();
@@ -225,7 +225,7 @@ public final class ZooKeeperSettingsManager extends AbstractLifecycleComponent<Z
         try {
             return Streams.copyToByteArray(file);
         } catch (IOException ex) {
-            throw new ElasticSearchException("Cannot load settings file " + path, ex);
+            throw new ElasticsearchException("Cannot load settings file " + path, ex);
         }
     }
 

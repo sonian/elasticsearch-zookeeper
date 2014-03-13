@@ -17,7 +17,7 @@
 package com.sonian.elasticsearch.zookeeper.discovery;
 
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClientException;
-import org.elasticsearch.ElasticSearchException;
+import org.elasticsearch.ElasticsearchException;
 import com.sonian.elasticsearch.zookeeper.client.AbstractNodeListener;
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClient;
 import org.elasticsearch.common.settings.ImmutableSettings;
@@ -100,7 +100,7 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
                 try {
                     masters[0] = zk2.getOrCreateTransientNode("/tests/master", "id2".getBytes(), null);
                 } catch (InterruptedException ex) {
-                    throw new ElasticSearchException("Thread interrupted", ex);
+                    throw new ElasticsearchException("Thread interrupted", ex);
                 }
                 latch.countDown();
             }
@@ -112,7 +112,7 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
                 try {
                     masters[1] = zk2.getOrCreateTransientNode("/tests/master", "id2".getBytes(), null);
                 } catch (InterruptedException ex) {
-                    throw new ElasticSearchException("Thread interrupted", ex);
+                    throw new ElasticsearchException("Thread interrupted", ex);
                 }
                 latch.countDown();
             }
@@ -159,7 +159,7 @@ public class ZooKeeperClientTests extends AbstractZooKeeperTests {
                 lists.add(resList);
                 latch.countDown();
             } catch (InterruptedException ex) {
-                throw new ElasticSearchException("Thread interrupted", ex);
+                throw new ElasticsearchException("Thread interrupted", ex);
             }
         }
 

@@ -20,7 +20,7 @@ package com.sonian.elasticsearch.zookeeper.client;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
-import org.elasticsearch.ElasticSearchException;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.component.AbstractComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
@@ -42,7 +42,7 @@ public class ZooKeeperFactory extends AbstractComponent {
         super(settings);
         host = componentSettings.get("host");
         if (host == null) {
-            throw new ElasticSearchException("Empty ZooKeeper host name");
+            throw new ElasticsearchException("Empty ZooKeeper host name");
         }
         sessionTimeout = componentSettings.getAsTime("session.timeout", new TimeValue(1, TimeUnit.MINUTES));
     }
@@ -58,7 +58,7 @@ public class ZooKeeperFactory extends AbstractComponent {
         try {
             return new ZooKeeper(host, (int) sessionTimeout.millis(), watcher);
         } catch (IOException e) {
-            throw new ElasticSearchException("Cannot start ZooKeeper", e);
+            throw new ElasticsearchException("Cannot start ZooKeeper", e);
         }
     }
 

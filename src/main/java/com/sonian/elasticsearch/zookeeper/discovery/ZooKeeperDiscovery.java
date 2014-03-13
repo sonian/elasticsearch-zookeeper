@@ -19,7 +19,7 @@ package com.sonian.elasticsearch.zookeeper.discovery;
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClient;
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperClientSessionExpiredException;
 import com.sonian.elasticsearch.zookeeper.client.ZooKeeperEnvironment;
-import org.elasticsearch.ElasticSearchException;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.Version;
 import org.elasticsearch.cluster.*;
 import org.elasticsearch.cluster.block.ClusterBlocks;
@@ -120,7 +120,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         }
     }
 
-    @Override protected void doStart() throws ElasticSearchException {
+    @Override protected void doStart() throws ElasticsearchException {
         // note, we rely on the fact that its a new id each time we start, see FD and "kill -9" handling
         String nodeId = Strings.randomBase64UUID();
         localNode = new DiscoveryNode(settings.get("name"), nodeId, transportService.boundAddress().publishAddress(), discoveryNodeService.buildAttributes(), Version.CURRENT);
@@ -147,7 +147,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         }
     }
 
-    @Override protected void doStop() throws ElasticSearchException {
+    @Override protected void doStop() throws ElasticsearchException {
         statePublisher.stop();
 
         zooKeeperClient.removeSessionStateListener(sessionResetListener);
@@ -164,7 +164,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         }
     }
 
-    @Override protected void doClose() throws ElasticSearchException {
+    @Override protected void doClose() throws ElasticsearchException {
         zooKeeperClient.close();
     }
 
@@ -560,7 +560,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         }
     }
 
-    public DiscoveryNode nodeInfo(final String id) throws ElasticSearchException, InterruptedException {
+    public DiscoveryNode nodeInfo(final String id) throws ElasticsearchException, InterruptedException {
         try {
             byte[] buf = zooKeeperClient.getNode(nodePath(id), null);
             if (buf != null) {
@@ -569,7 +569,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
                 return null;
             }
         } catch (IOException e) {
-            throw new ElasticSearchException("Cannot get node info " + id, e);
+            throw new ElasticsearchException("Cannot get node info " + id, e);
         }
     }
 

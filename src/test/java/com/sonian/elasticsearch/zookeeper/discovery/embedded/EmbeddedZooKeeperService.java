@@ -19,7 +19,7 @@ package com.sonian.elasticsearch.zookeeper.discovery.embedded;
 import org.apache.zookeeper.server.NIOServerCnxn;
 import org.apache.zookeeper.server.ZooKeeperServer;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
-import org.elasticsearch.ElasticSearchException;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.PortsRange;
@@ -67,21 +67,21 @@ public class EmbeddedZooKeeperService extends AbstractLifecycleComponent<Embedde
 
     }
 
-    @Override protected void doStart() throws ElasticSearchException {
+    @Override protected void doStart() throws ElasticsearchException {
         try {
             cnxnFactory.startup(zooKeeperServer);
         } catch (IOException e) {
-            throw new ElasticSearchException("Cannot start ZooKeeper", e);
+            throw new ElasticsearchException("Cannot start ZooKeeper", e);
         } catch (InterruptedException e) {
-            throw new ElasticSearchException("ZooKeeper startup interrupted", e);
+            throw new ElasticsearchException("ZooKeeper startup interrupted", e);
         }
     }
 
-    @Override protected void doStop() throws ElasticSearchException {
+    @Override protected void doStop() throws ElasticsearchException {
         cnxnFactory.shutdown();
     }
 
-    @Override protected void doClose() throws ElasticSearchException {
+    @Override protected void doClose() throws ElasticsearchException {
     }
 
     @Override public int port() {

@@ -18,7 +18,7 @@
 package com.sonian.elasticsearch.zookeeper.discovery;
 
 import com.sonian.elasticsearch.zookeeper.client.*;
-import org.elasticsearch.ElasticSearchException;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.Version;
 import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.block.ClusterBlocks;
@@ -79,11 +79,11 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
      * Publishes new cluster state
      *
      * @param state
-     * @throws org.elasticsearch.ElasticSearchException
+     * @throws org.elasticsearch.ElasticsearchException
      *
      * @throws InterruptedException
      */
-    public void publish(ClusterState state) throws ElasticSearchException, InterruptedException {
+    public void publish(ClusterState state) throws ElasticsearchException, InterruptedException {
         publishingLock.lock();
         try {
             logger.trace("Publishing new cluster state version [{}]", state.version());
@@ -115,10 +115,10 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
      *
      * @param newClusterStateListener triggered when cluster state changes
      * @return
-     * @throws ElasticSearchException
+     * @throws ElasticsearchException
      * @throws InterruptedException
      */
-    public ClusterState retrieve(final NewClusterStateListener newClusterStateListener) throws ElasticSearchException, InterruptedException {
+    public ClusterState retrieve(final NewClusterStateListener newClusterStateListener) throws ElasticsearchException, InterruptedException {
         publishingLock.lock();
         try {
             if (!lifecycle.started()) {
@@ -184,7 +184,7 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
      * This method should be called when node becomes master and switches from retrieving cluster state
      * to publishing cluster state.
      */
-    public void syncClusterState() throws ElasticSearchException, InterruptedException {
+    public void syncClusterState() throws ElasticsearchException, InterruptedException {
         // To prepare for publishing master state, make sure that we are in sync with zooKeeper
         try {
             retrieve(null);
@@ -194,7 +194,7 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
         }
     }
 
-    private void cleanClusterStateNode() throws ElasticSearchException, InterruptedException {
+    private void cleanClusterStateNode() throws ElasticsearchException, InterruptedException {
         Set<String> parts = zooKeeperClient.listNodes(environment.stateNodePath(), null);
         for (String part : parts) {
             // Don't delete the part node itself. Other nodes might already have watchers set on this node
@@ -218,15 +218,15 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
     }
 
     @Override
-    protected void doStart() throws ElasticSearchException {
+    protected void doStart() throws ElasticsearchException {
     }
 
     @Override
-    protected void doStop() throws ElasticSearchException {
+    protected void doStop() throws ElasticsearchException {
     }
 
     @Override
-    protected void doClose() throws ElasticSearchException {
+    protected void doClose() throws ElasticsearchException {
     }
 
     protected String clusterStateVersion() {
@@ -361,7 +361,7 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
             this.statePartName = statePartName;
         }
 
-        public String publishClusterStatePart(ClusterState state) throws ElasticSearchException, InterruptedException {
+        public String publishClusterStatePart(ClusterState state) throws ElasticsearchException, InterruptedException {
             T statePart = get(state);
             if (statePart.equals(cached)) {
                 return cachedPath;
@@ -374,7 +374,7 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
             }
         }
 
-        private String internalPublishClusterStatePart(T statePart) throws ElasticSearchException, InterruptedException {
+        private String internalPublishClusterStatePart(T statePart) throws ElasticsearchException, InterruptedException {
             final String path = environment.stateNodePath() + "/" + statePartName + "_";
             String rootPath;
             try {
@@ -388,7 +388,7 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
             return rootPath;
         }
 
-        public T getClusterStatePart(String path) throws ElasticSearchException, InterruptedException {
+        public T getClusterStatePart(String path) throws ElasticsearchException, InterruptedException {
             if (path.equals(cachedPath)) {
                 return cached;
             } else {
@@ -404,7 +404,7 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
 
         }
 
-        public void purge() throws ElasticSearchException, InterruptedException {
+        public void purge() throws ElasticsearchException, InterruptedException {
             if (previousPath != null) {
                 try {
                     zooKeeperClient.deleteLargeNode(previousPath);
@@ -416,7 +416,7 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
             }
         }
 
-        public T internalGetStatePart(final String path) throws ElasticSearchException, InterruptedException {
+        public T internalGetStatePart(final String path) throws ElasticsearchException, InterruptedException {
             try {
 
                 byte[] buf = zooKeeperClient.getLargeNode(path);
@@ -430,7 +430,7 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
             }
         }
 
-        public ClusterState.Builder set(ClusterState.Builder builder, String path) throws ElasticSearchException, InterruptedException {
+        public ClusterState.Builder set(ClusterState.Builder builder, String path) throws ElasticsearchException, InterruptedException {
             T val = getClusterStatePart(path);
             if (val == null) {
                 return null;

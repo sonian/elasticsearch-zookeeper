@@ -173,8 +173,16 @@ public class ZooKeeperDiscoveryTests extends AbstractZooKeeperNodeTests {
         buildNode("node1");
 
         // Start client before master
-        ClusterStateMonitor clientMonitor = new ClusterStateMonitor("client");
-        ClusterStateMonitor nodeMonitor = new ClusterStateMonitor("node1");
+        ClusterStateMonitor clientMonitor = new ClusterStateMonitor("client", new ClusterStateCondition() {
+            @Override public boolean check(ClusterChangedEvent event) {
+                return event.state().nodes().masterNode() != null;
+            }
+        });
+        ClusterStateMonitor nodeMonitor = new ClusterStateMonitor("node1", new ClusterStateCondition() {
+            @Override public boolean check(ClusterChangedEvent event) {
+                return event.state().nodes().masterNode() != null;
+            }
+        });
         node("client").start();
         node("node1").start();
         ClusterState nodeState = nodeMonitor.await();
@@ -248,8 +256,16 @@ public class ZooKeeperDiscoveryTests extends AbstractZooKeeperNodeTests {
         buildNode("node1");
 
         // Start client before master
-        ClusterStateMonitor clientMonitor = new ClusterStateMonitor("client");
-        ClusterStateMonitor nodeMonitor = new ClusterStateMonitor("node1");
+        ClusterStateMonitor clientMonitor = new ClusterStateMonitor("client", new ClusterStateCondition() {
+            @Override public boolean check(ClusterChangedEvent event) {
+                return event.state().nodes().masterNode() != null;
+            }
+        });
+        ClusterStateMonitor nodeMonitor = new ClusterStateMonitor("node1",  new ClusterStateCondition() {
+            @Override public boolean check(ClusterChangedEvent event) {
+                return event.state().nodes().masterNode() != null;
+            }
+        });
         node("client").start();
         node("node1").start();
         ClusterState nodeState = nodeMonitor.await();

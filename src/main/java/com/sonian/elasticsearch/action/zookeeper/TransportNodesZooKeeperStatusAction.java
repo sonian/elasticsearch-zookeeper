@@ -17,7 +17,7 @@
 package com.sonian.elasticsearch.action.zookeeper;
 
 import com.sonian.elasticsearch.zookeeper.discovery.ZooKeeperDiscovery;
-import org.elasticsearch.ElasticSearchException;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.support.nodes.NodeOperationRequest;
 import org.elasticsearch.action.support.nodes.TransportNodesOperationAction;
 import org.elasticsearch.cluster.ClusterName;
@@ -103,7 +103,7 @@ public class TransportNodesZooKeeperStatusAction extends
     }
 
     @Override
-    protected NodesZooKeeperStatusResponse.NodeZooKeeperStatusResponse nodeOperation(NodeZooKeeperStatusRequest nodeZooKeeperStatusRequest) throws ElasticSearchException {
+    protected NodesZooKeeperStatusResponse.NodeZooKeeperStatusResponse nodeOperation(NodeZooKeeperStatusRequest nodeZooKeeperStatusRequest) throws ElasticsearchException {
         if (zooKeeperDiscovery != null) {
             try {
                 return new NodesZooKeeperStatusResponse.NodeZooKeeperStatusResponse(
