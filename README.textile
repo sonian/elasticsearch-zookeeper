@@ -5,7 +5,9 @@ h2. Compatibility
 The following table shows the versions of elasticsearch and Apache Zookeeper that Zookeeper Plugin was built with.
 
 |_. ES-zk Plugin |_.  Elasticsearch    |_.  Zookeeper  |
-| 0.90.1         | 0.90.12             | 3.3.6         |
+| master         | 1.1.0-SNAPSHOT      | 3.3.6         |
+| 1.0.0          | 1.0.1               | 3.3.6         |
+| 0.90.2         | 0.90.12             | 3.3.6         |
 | 0.90.0         | 0.90.2              | 3.3.6         |
 | 0.20.0         | 0.20.4              | 3.3.6         |
 | 0.19.7         | 0.19.9              | 3.3.5         |
@@ -20,10 +22,10 @@ h3. Installation
 * Unzip the ZooKeeper archive into a directory, rename conf/zoo-sample.cfg into zoo.cfg and modify dataDir= line to point to a directory on your machine. Start ZooKeeper by running bin/zkServer.sh start.
 * Install ZooKeeper plugin to ES by running
 
-for elasticsearch-zookeeper versions 0.90.1 and above:
+for elasticsearch-zookeeper versions 0.90.2 and above:
 
 <pre>
-% bin/plugin -url https://github.com/imotov/elasticsearch-zookeeper/releases/download/v0.90.1/elasticsearch-zookeeper-0.90.1.zip -install zookeeper
+% bin/plugin -url https://github.com/imotov/elasticsearch-zookeeper/releases/download/v1.0.0/elasticsearch-zookeeper-1.0.0.zip -install zookeeper
 </pre>
 
 for elasticsearch-zookeeper versions 0.90.0 and below:
