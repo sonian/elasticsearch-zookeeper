@@ -39,6 +39,7 @@ import org.elasticsearch.common.io.stream.BytesStreamOutput;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.discovery.Discovery;
+import org.elasticsearch.discovery.DiscoverySettings;
 import org.elasticsearch.discovery.InitialStateDiscoveryListener;
 import org.elasticsearch.discovery.zen.DiscoveryNodesProvider;
 import org.elasticsearch.discovery.zen.publish.PublishClusterStateAction;
@@ -104,7 +105,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
 
     @Inject public ZooKeeperDiscovery(Settings settings, ZooKeeperEnvironment environment, ClusterName clusterName, ThreadPool threadPool,
                                       TransportService transportService, ClusterService clusterService, DiscoveryNodeService discoveryNodeService,
-                                      ZooKeeperClient zooKeeperClient) {
+                                      DiscoverySettings discoverySettings, ZooKeeperClient zooKeeperClient) {
         super(settings);
         this.clusterName = clusterName;
         this.clusterService = clusterService;
@@ -116,7 +117,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         if (componentSettings.getAsBoolean("state_publishing.enabled", false)) {
             statePublisher = new ZooKeeperStatePublisher(settings, environment, zooKeeperClient, this);
         } else {
-            statePublisher = new ZenStatePublisher(settings, transportService, this, new NewClusterStateListener());
+            statePublisher = new ZenStatePublisher(settings, transportService, this, new NewClusterStateListener(), discoverySettings);
         }
     }
 
@@ -345,7 +346,8 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
 
     private void removeMaster() {
         clusterService.submitStateUpdateTask("zoo-keeper-disco-no-master (no_master_found)", new ProcessedClusterStateUpdateTask() {
-            @Override public ClusterState execute(ClusterState currentState) {
+            @Override
+            public ClusterState execute(ClusterState currentState) {
                 MetaData metaData = currentState.metaData();
                 RoutingTable routingTable = currentState.routingTable();
                 ClusterBlocks clusterBlocks = ClusterBlocks.builder().blocks(currentState.blocks()).addGlobalBlock(NO_MASTER_BLOCK).build();
@@ -372,13 +374,15 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
                         .build();
             }
 
-            @Override public void clusterStateProcessed(String source, ClusterState oldState, ClusterState newState) {
+            @Override
+            public void clusterStateProcessed(String source, ClusterState oldState, ClusterState newState) {
                 sendInitialStateEventIfNeeded();
             }
 
-            @Override public void onFailure(String source, Throwable t) {
+            @Override
+            public void onFailure(String source, Throwable t) {
                 logger.error("unexpected failure during [{}]", t, source);
-             }
+            }
         });
     }
 
@@ -443,7 +447,7 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
                     Set<String> added = new HashSet<String>(nodes);
                     added.removeAll(currentNodes);
                     logger.trace("Current nodes: [{}], new nodes: [{}], deleted: [{}], added[{}]", currentNodes, nodes, deleted, added);
-                    if(!deleted.isEmpty() || !added.isEmpty()) {
+                    if (!deleted.isEmpty() || !added.isEmpty()) {
                         DiscoveryNodes.Builder builder = DiscoveryNodes.builder(currentState.nodes());
                         for (String nodeId : deleted) {
                             if (currentState.nodes().nodeExists(nodeId)) {
@@ -475,7 +479,8 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
                 return currentState;
             }
 
-            @Override public void onFailure(String source, Throwable t) {
+            @Override
+            public void onFailure(String source, Throwable t) {
                 logger.error("unexpected failure during [{}]", t, source);
             }
         });
@@ -691,8 +696,8 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         private final PublishClusterStateAction publishClusterState;
 
         public ZenStatePublisher(Settings settings, TransportService transportService, DiscoveryNodesProvider nodesProvider,
-                                 NewClusterStateListener listener) {
-            publishClusterState = new PublishClusterStateAction(settings, transportService, nodesProvider, listener);
+                                 NewClusterStateListener listener, DiscoverySettings discoverySettings) {
+            publishClusterState = new PublishClusterStateAction(settings, transportService, nodesProvider, listener, discoverySettings);
         }
 
         @Override public void start() {

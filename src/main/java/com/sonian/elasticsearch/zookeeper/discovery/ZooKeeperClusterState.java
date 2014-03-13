@@ -325,27 +325,6 @@ public class ZooKeeperClusterState extends AbstractLifecycleComponent<ZooKeeperC
                 return builder.blocks(val);
             }
         });
-        parts.add(new ClusterStatePart<AllocationExplanation>("allocationExplanation") {
-            @Override
-            public void writeTo(AllocationExplanation statePart, StreamOutput out) throws IOException {
-                statePart.writeTo(out);
-            }
-
-            @Override
-            public AllocationExplanation readFrom(StreamInput in) throws IOException {
-                return AllocationExplanation.readAllocationExplanation(in);
-            }
-
-            @Override
-            public AllocationExplanation get(ClusterState state) {
-                return state.allocationExplanation();
-            }
-
-            @Override
-            public ClusterState.Builder set(ClusterState.Builder builder, AllocationExplanation val) {
-                return builder.allocationExplanation(val);
-            }
-        });
     }
 
     private abstract class ClusterStatePart<T> {
