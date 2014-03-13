@@ -672,9 +672,9 @@ public class ZooKeeperDiscovery extends AbstractLifecycleComponent<Discovery> im
         @Override public void publish(ClusterState clusterState, AckListener ackListener) {
             try {
                 // ignore the ack. rely on zk to handle distribution.
-                zooKeeperClusterState.publish(clusterState);
+                zooKeeperClusterState.publish(clusterState, ackListener);
             } catch (InterruptedException ex) {
-                // Ignore
+                Thread.currentThread().interrupt();
             }
 
         }
