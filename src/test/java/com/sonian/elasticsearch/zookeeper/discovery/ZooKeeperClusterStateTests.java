@@ -60,7 +60,7 @@ public class ZooKeeperClusterStateTests extends AbstractZooKeeperTests {
 
         zkState.start();
 
-        zkState.publish(initialState);
+        zkState.publish(initialState, new NoOpAckListener());
 
         final CountDownLatch latch = new CountDownLatch(1);
 
@@ -75,12 +75,11 @@ public class ZooKeeperClusterStateTests extends AbstractZooKeeperTests {
         assertThat(ClusterState.Builder.toBytes(retrievedState),
                 equalTo(ClusterState.Builder.toBytes(initialState)));
 
-        ClusterState secondVersion = ClusterState.newClusterStateBuilder()
-                .state(initialState)
+        ClusterState secondVersion = ClusterState.builder(initialState)
                 .version(1235L)
                 .build();
 
-        zkState.publish(secondVersion);
+        zkState.publish(secondVersion, new NoOpAckListener());
 
         retrievedState = zkState.retrieve(null);
 
@@ -102,7 +101,7 @@ public class ZooKeeperClusterStateTests extends AbstractZooKeeperTests {
 
         zkStateOld.start();
 
-        zkStateOld.publish(initialState);
+        zkStateOld.publish(initialState, new NoOpAckListener());
 
         zkStateOld.stop();
 
@@ -125,7 +124,7 @@ public class ZooKeeperClusterStateTests extends AbstractZooKeeperTests {
         zkStateNew.syncClusterState();
 
         // Make sure that new start can be published now
-        zkStateNew.publish(initialState);
+        zkStateNew.publish(initialState, new NoOpAckListener());
 
         zkStateNew.stop();
 

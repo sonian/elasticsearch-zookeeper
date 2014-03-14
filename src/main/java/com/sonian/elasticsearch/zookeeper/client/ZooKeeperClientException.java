@@ -17,12 +17,12 @@
 
 package com.sonian.elasticsearch.zookeeper.client;
 
-import org.elasticsearch.ElasticSearchException;
+import org.elasticsearch.ElasticsearchException;
 
 /**
  * @author imotov
  */
-public class ZooKeeperClientException extends ElasticSearchException {
+public class ZooKeeperClientException extends ElasticsearchException {
 
     public ZooKeeperClientException(String msg) {
         super(msg);

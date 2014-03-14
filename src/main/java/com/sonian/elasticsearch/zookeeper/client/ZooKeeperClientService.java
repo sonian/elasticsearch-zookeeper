@@ -19,7 +19,7 @@ package com.sonian.elasticsearch.zookeeper.client;
 
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
-import org.elasticsearch.ElasticSearchException;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.BytesStreamOutput;
@@ -70,7 +70,7 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
     }
 
     @Override
-    protected void doStart() throws ElasticSearchException {
+    protected void doStart() throws ElasticsearchException {
         try {
             final Watcher watcher = new Watcher() {
                 @Override
@@ -97,7 +97,7 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
     }
 
     @Override
-    protected void doStop() throws ElasticSearchException {
+    protected void doStop() throws ElasticsearchException {
         if (zooKeeper != null) {
             try {
                 logger.debug("Closing zooKeeper");
@@ -110,7 +110,7 @@ public class ZooKeeperClientService extends AbstractLifecycleComponent<ZooKeeper
     }
 
     @Override
-    protected void doClose() throws ElasticSearchException {
+    protected void doClose() throws ElasticsearchException {
     }
 
     @Override

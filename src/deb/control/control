@@ -6,4 +6,4 @@ Depends: elasticsearch, java7-runtime-headless | java6-runtime-headless | java7-
 Section: web
 Priority: optional
 Homepage: https://github.com/sonian/elasticsearch-zookeeper/
-Description: ZooKeeper discovery plugin for the ElasticSearch search engine
+Description: ZooKeeper discovery plugin for the Elasticsearch search engine

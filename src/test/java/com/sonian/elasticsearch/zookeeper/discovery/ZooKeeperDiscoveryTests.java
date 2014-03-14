@@ -173,8 +173,16 @@ public class ZooKeeperDiscoveryTests extends AbstractZooKeeperNodeTests {
         buildNode("node1");
 
         // Start client before master
-        ClusterStateMonitor clientMonitor = new ClusterStateMonitor("client");
-        ClusterStateMonitor nodeMonitor = new ClusterStateMonitor("node1");
+        ClusterStateMonitor clientMonitor = new ClusterStateMonitor("client", new ClusterStateCondition() {
+            @Override public boolean check(ClusterChangedEvent event) {
+                return event.state().nodes().masterNode() != null;
+            }
+        });
+        ClusterStateMonitor nodeMonitor = new ClusterStateMonitor("node1", new ClusterStateCondition() {
+            @Override public boolean check(ClusterChangedEvent event) {
+                return event.state().nodes().masterNode() != null;
+            }
+        });
         node("client").start();
         node("node1").start();
         ClusterState nodeState = nodeMonitor.await();
@@ -236,7 +244,7 @@ public class ZooKeeperDiscoveryTests extends AbstractZooKeeperNodeTests {
         ClusterState initialState = testClusterState(routingTable, nodes);
         ZooKeeperClusterState zkStateOld = buildZooKeeperClusterState(nodes, "0.0.1");
         zkStateOld.start();
-        zkStateOld.publish(initialState);
+        zkStateOld.publish(initialState, new NoOpAckListener());
         zkStateOld.stop();
 
         // Create a client node
@@ -248,8 +256,16 @@ public class ZooKeeperDiscoveryTests extends AbstractZooKeeperNodeTests {
         buildNode("node1");
 
         // Start client before master
-        ClusterStateMonitor clientMonitor = new ClusterStateMonitor("client");
-        ClusterStateMonitor nodeMonitor = new ClusterStateMonitor("node1");
+        ClusterStateMonitor clientMonitor = new ClusterStateMonitor("client", new ClusterStateCondition() {
+            @Override public boolean check(ClusterChangedEvent event) {
+                return event.state().nodes().masterNode() != null;
+            }
+        });
+        ClusterStateMonitor nodeMonitor = new ClusterStateMonitor("node1",  new ClusterStateCondition() {
+            @Override public boolean check(ClusterChangedEvent event) {
+                return event.state().nodes().masterNode() != null;
+            }
+        });
         node("client").start();
         node("node1").start();
         ClusterState nodeState = nodeMonitor.await();

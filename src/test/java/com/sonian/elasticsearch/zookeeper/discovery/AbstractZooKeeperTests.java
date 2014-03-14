@@ -23,13 +23,16 @@ import com.sonian.elasticsearch.zookeeper.client.ZooKeeperFactory;
 import com.sonian.elasticsearch.zookeeper.discovery.embedded.EmbeddedZooKeeperService;
 import org.elasticsearch.cluster.ClusterName;
 import org.elasticsearch.cluster.ClusterState;
+import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.routing.*;
+import org.elasticsearch.common.Nullable;
 import org.elasticsearch.common.logging.ESLogger;
 import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.network.NetworkUtils;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.discovery.Discovery;
 import org.elasticsearch.discovery.zen.DiscoveryNodesProvider;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.index.shard.ShardId;
@@ -172,7 +175,7 @@ public abstract class AbstractZooKeeperTests {
 
 
     protected ClusterState testClusterState(RoutingTable routingTable, DiscoveryNodes nodes) {
-        return ClusterState.newClusterStateBuilder()
+        return ClusterState.builder()
                 .version(1234L)
                 .routingTable(routingTable)
                 .nodes(nodes)
@@ -180,7 +183,7 @@ public abstract class AbstractZooKeeperTests {
     }
 
     protected DiscoveryNodes testDiscoveryNodes() {
-        return DiscoveryNodes.newNodesBuilder()
+        return DiscoveryNodes.builder()
                 .masterNodeId("localnodeid")
                 .build();
     }
@@ -248,6 +251,17 @@ public abstract class AbstractZooKeeperTests {
         @Override
         protected String clusterStateVersion() {
             return clusterStateVersion;
+        }
+    }
+
+
+    protected static class NoOpAckListener implements Discovery.AckListener {
+        @Override
+        public void onNodeAck(DiscoveryNode node, @Nullable Throwable t) {
+        }
+
+        @Override
+        public void onTimeout() {
         }
     }
 
