@@ -1,9 +1,0 @@
-Package: elasticsearch-zookeeper
-Version: [[version]]
-Architecture: all
-Maintainer: Saj Goonatilleke <sg@redu.cx>
-Depends: elasticsearch, java7-runtime-headless | java6-runtime-headless | java7-runtime | java6-runtime
-Section: web
-Priority: optional
-Homepage: https://github.com/sonian/elasticsearch-zookeeper/
-Description: ZooKeeper discovery plugin for the ElasticSearch search engine
